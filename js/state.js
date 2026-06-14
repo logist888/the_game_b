@@ -38,6 +38,9 @@ function newPlayer(name) {
     counters: { kills:0, gathered:0, crafted:0, expeditions:0 },
     lastTick: Date.now(),
     log: [],
+    refCount: 0,
+    referredBy: null,
+    refRegistered: false,
   };
 }
 
@@ -65,7 +68,21 @@ function addItemTo(p, item) {
   p.inventory.push(it);
 }
 
-let player = loadGame() || (() => { const p = newPlayer(); grantStarterResources(p); return p; })();
+let player = loadGame() || (() => {
+  const p = newPlayer();
+  grantStarterResources(p);
+  const sp = window.TG_USER && window.TG_USER.startParam;
+  if (sp && sp.startsWith('ref_')) {
+    const referrerId = sp.slice(4);
+    if (referrerId && String(referrerId) !== String(window.TG_USER && window.TG_USER.id)) {
+      p.referredBy = referrerId;
+      p.resources.gold += 500;
+      p.resources.sparks += 100;
+      p.log.unshift({ t: Date.now(), msg: '🎁 Бонус за приглашение: +500 🪙 и +100 🔥!' });
+    }
+  }
+  return p;
+})();
 
 // --- Рост стата от использования (геометрическая прогрессия) ---
 function trainStat(key, amount) {
@@ -243,14 +260,30 @@ async function syncFromCloud() {
     if (!r.ok) return;
     const remote = await r.json();
     if (!remote || typeof remote !== 'object') return;
+
+    // Extract server-injected meta fields before comparing saves
+    const pendingBonus = remote._pendingBonus || 0;
+    const remoteRefCount = remote._refCount;
+    delete remote._pendingBonus;
+    delete remote._refCount;
+
     const local = loadGame();
     if (!local || (remote.lastSaved || 0) > (local.lastSaved || 0)) {
       localStorage.setItem(SAVE_KEY, JSON.stringify(remote));
       player = remote;
       recalc();
       applyRegen();
-      if (typeof renderAll === 'function') renderAll();
     }
+
+    if (pendingBonus) {
+      player.resources.gold = (player.resources.gold || 0) + pendingBonus;
+      pushLog(`🎁 Бонус от рефералов: +${pendingBonus} 🪙`);
+      if (typeof showToast === 'function') showToast(`🎁 +${pendingBonus} 🪙 от рефералов!`);
+    }
+    if (remoteRefCount != null) player.refCount = remoteRefCount;
+
+    if (pendingBonus || remoteRefCount != null) saveGame();
+    if (typeof render === 'function') render();
   } catch (e) {}
 }
 
