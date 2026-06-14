@@ -119,6 +119,7 @@ function gainXp(n) {
     addRes('sparks', reward);
     pushLog(`🎉 Новый уровень ${player.xpLevel}! Полное восстановление и +${reward} 🔥 искр.`);
     if (typeof showToast === 'function') showToast(`🎉 Уровень ${player.xpLevel}!`);
+    if (player.xpLevel % 5 === 0) _notifyLevelUp(player.xpLevel);
     need = xpNeed(player.xpLevel);
   }
 }
@@ -300,6 +301,15 @@ async function syncFromCloud() {
     // Новый реферальный игрок: пушим немедленно вместо ожидания 30 с
     if (player.referredBy && !player.refRegistered) _pushToCloud();
   } catch (e) {}
+}
+
+function _notifyLevelUp(level) {
+  if (!_cloudReady()) return;
+  fetch(`${CLOUD_URL}/notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: TG_USER.initData, type: 'levelup', payload: { level } }),
+  }).catch(() => {});
 }
 
 recalc();
