@@ -1,7 +1,11 @@
 /*
  * Интеграция с Telegram Mini App. Работает только внутри Telegram —
  * в обычном браузере window.Telegram отсутствует и модуль ничего не делает.
+ *
+ * TODO: замените имя бота (без @) для реферальных ссылок
  */
+window.BOT_HANDLE = 'YOUR_BOT_USERNAME'; // например: 'BabylonGameBot'
+
 (function () {
   const tg = window.Telegram && window.Telegram.WebApp;
   if (!tg) return;
@@ -39,6 +43,7 @@
         id: u.id,
         name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || null,
         initData: tg.initData || '',  // raw-строка для HMAC-верификации на воркере
+        startParam: (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '',
       };
     }
   } catch (e) {}
