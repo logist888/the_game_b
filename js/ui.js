@@ -57,6 +57,7 @@ function render() {
   }
   $('main').innerHTML = head + (views[activeView] || viewTower)();
   if (activeView === 'council') { setTimeout(loadLeaderboard, 0); setTimeout(loadRefLeaderboard, 0); }
+  if (activeView === 'arena') setTimeout(loadPvpOpponents, 0);
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
@@ -208,11 +209,104 @@ function viewStairs() {
 }
 
 function viewArena() {
+  const pvp = player.pvp || { wins: 0, losses: 0 };
+  const userId = window.TG_USER && window.TG_USER.id;
+  const pvpSection = userId ? `
+    <div class="pvp-stats">
+      <span>🏆 Побед: <b>${pvp.wins}</b></span>
+      <span>💀 Поражений: <b>${pvp.losses}</b></span>
+    </div>
+    <h3>⚔️ Реальные соперники</h3>
+    <div id="pvp-opponents"><span class="muted">⏳ Поиск соперников…</span></div>` : '';
   return `<div class="panel">
     <h2>⚔️ Арена</h2>
-    <p class="muted">Тренировочный бой с тёмным двойником ради опыта. Тип боя — как в верхнем мире РПГ.</p>
+    ${pvpSection}
+    <h3>🤖 Тренировочный бой</h3>
+    <p class="muted">Бой с тёмным двойником ради опыта.</p>
     <button class="big" onclick="startArena()">Выйти на бой с двойником</button>
   </div>`;
+}
+
+function _simulatePvp(opp) {
+  let myHp = player.maxHp;
+  let oppHp = opp.maxHp;
+  const d = player.derived;
+  const log = [];
+  for (let r = 1; r <= 40 && myHp > 0 && oppHp > 0; r++) {
+    const myDmg = Math.max(1, Math.round(
+      (d.dmgMin + Math.random() * (d.dmgMax - d.dmgMin)) * 100 / (100 + (opp.armor || 0))
+    ));
+    oppHp -= myDmg;
+    log.push(`Раунд ${r}: ты ${myDmg} урона → HP врага ${Math.max(0, Math.round(oppHp))}`);
+    if (oppHp <= 0) break;
+    const oppDmg = Math.max(1, Math.round(
+      ((opp.dmgMin || 3) + Math.random() * ((opp.dmgMax || 8) - (opp.dmgMin || 3)))
+      * 100 / (100 + (d.armor || 0))
+    ));
+    myHp -= oppDmg;
+    log.push(`${esc(opp.name)} ${oppDmg} урона → твой HP ${Math.max(0, Math.round(myHp))}`);
+  }
+  return { won: myHp > 0 || oppHp <= 0, log: log.slice(-6) };
+}
+
+function challengeOpponent(dataJson) {
+  const opp = JSON.parse(dataJson);
+  const { won, log } = _simulatePvp(opp);
+
+  const goldReward = won ? Math.round(30 * (opp.danger || 1)) : -Math.round(10 * player.danger);
+  const xpReward  = won ? Math.round(50 * (opp.danger || 1)) : Math.round(10 * (opp.danger || 1));
+
+  if (won) { player.pvp.wins = (player.pvp.wins || 0) + 1; }
+  else     { player.pvp.losses = (player.pvp.losses || 0) + 1; }
+  addRes('gold', goldReward);
+  gainXp(xpReward);
+  pushLog(`${won ? '🏆' : '💀'} PvP vs ${opp.name}: ${won ? 'победа' : 'поражение'}! Золото ${goldReward > 0 ? '+' : ''}${goldReward}, XP +${xpReward}`);
+  saveGame();
+
+  // Уведомляем соперника на сервере
+  if (typeof _cloudReady === 'function' && _cloudReady()) {
+    fetch(`${CLOUD_URL}/arena/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: TG_USER.initData, targetId: opp.userId, targetName: opp.name, won }),
+    }).catch(() => {});
+  }
+
+  const el = document.getElementById('pvp-opponents');
+  if (!el) return;
+  el.innerHTML = `<div class="pvp-result ${won ? 'win' : 'lose'}">
+    <div class="pvp-result-title">${won ? '🏆 Победа!' : '💀 Поражение'}</div>
+    <div class="pvp-result-vs">vs <b>${esc(opp.name)}</b></div>
+    <div class="pvp-log">${log.map(l => `<div>${esc(l)}</div>`).join('')}</div>
+    <div class="pvp-rewards">Золото: ${goldReward > 0 ? '+' : ''}${goldReward} · XP: +${xpReward}</div>
+    <button class="mini" onclick="loadPvpOpponents()">Найти ещё соперника</button>
+  </div>`;
+  render();
+}
+
+async function loadPvpOpponents() {
+  const el = document.getElementById('pvp-opponents');
+  if (!el) return;
+  el.innerHTML = '<span class="muted">⏳ Поиск соперников…</span>';
+  const userId = window.TG_USER && window.TG_USER.id;
+  if (!userId) { el.innerHTML = '<span class="muted">Доступно только в Telegram</span>'; return; }
+  try {
+    const r = await fetch(`${CLOUD_URL}/arena/opponents?user_id=${userId}&danger=${player.danger}`);
+    if (!r.ok) throw new Error();
+    const list = await r.json();
+    if (!list.length) { el.innerHTML = '<span class="muted">Нет доступных соперников — возвращайтесь позже</span>'; return; }
+    el.innerHTML = list.map(opp => `
+      <div class="pvp-card">
+        <div class="pvp-card-info">
+          <b>${esc(opp.name)}</b>
+          <span class="muted">Уровень ${opp.xpLevel} · Опасность ${opp.danger}</span>
+          <span class="muted">HP ${opp.maxHp} · Урон ${opp.dmgMin}–${opp.dmgMax} · Броня ${opp.armor}</span>
+        </div>
+        <button class="mini" onclick="challengeOpponent(${JSON.stringify(JSON.stringify(opp))})">⚔️ Атаковать</button>
+      </div>`).join('');
+  } catch (e) {
+    el.innerHTML = '<span class="muted">Ошибка загрузки соперников</span>';
+  }
 }
 
 // ---------------- Мастерские и Лаборатория ----------------
