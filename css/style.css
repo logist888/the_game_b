@@ -215,6 +215,9 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .artframe.no-img>.bemoji{display:flex}
 .bicon{position:relative; width:48px; height:48px}
 
+.turn-timer{font-size:.8rem;color:var(--muted);margin-top:3px}
+.turn-timer.urgent{color:#f44336;font-weight:bold}
+
 @media(max-width:640px){
   .log{display:none}
   .form-row label{width:auto}
