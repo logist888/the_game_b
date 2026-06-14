@@ -362,7 +362,7 @@ function renderCombat() {
       </div>
       <div class="cc-row">
         <select onchange="combatSel.spell=this.value" id="spellSel">${spellOpts}</select>
-        <button class="mini" onclick="playerCast(document.getElementById('spellSel').value || player.spells[0], combatSel.atkZone); renderCombat()">✨ Каст</button>
+        <button class="mini" ${combat.castUsed ? 'disabled title="Уже кастовали в этот ход"' : ''} onclick="playerCast(document.getElementById('spellSel').value || player.spells[0], combatSel.atkZone); renderCombat()">✨ Каст</button>
         <button class="mini danger" onclick="playerFlee(); renderCombat()">🏃</button>
       </div>
       <div class="cc-row">${elixirBtns}</div>
@@ -379,6 +379,7 @@ function renderCombat() {
         <b>${esc(player.name)}</b> · раунд ${combat.round}
         ${bar(player.hp, player.maxHp, 'hp')} ${bar(player.mp, player.maxMp, 'mp')}
         ${combat.pBuffs.length ? `<div class="mtags">эффекты: ${combat.pBuffs.map((b) => b.type).join(', ')}</div>` : ''}
+        ${!combat.over ? `<div class="turn-timer${combat.turnTimeLeft <= 10 ? ' urgent' : ''}">⏱ ${combat.turnTimeLeft} сек</div>` : ''}
       </div>
       <div class="combat-mobs">${mobsHtml}</div>
     </div>
