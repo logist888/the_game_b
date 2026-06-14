@@ -1,0 +1,205 @@
+/* Проект «Вавилон» — стиль: камень, бронза, древняя башня. */
+:root{
+  --bg:#15110c; --bg2:#1f1813; --panel:#241c14; --panel2:#2c2218;
+  --line:#3a2d1f; --gold:#d9a441; --gold2:#f0c469; --txt:#e9e0d0; --muted:#9c8c74;
+  --hp:#b5403a; --mp:#3f6fb0; --xp:#6fa84f; --danger:#7a2b22;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:var(--txt);
+  background:
+    radial-gradient(1200px 500px at 50% -10%, #3a2c1c 0%, transparent 60%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  min-height:100vh; padding-bottom:calc(74px + env(safe-area-inset-bottom, 0px));
+}
+/* внутри Telegram тянемся на стабильную высоту вьюпорта */
+html.in-telegram, html.in-telegram body{ min-height:var(--tg-vh, 100vh); }
+h2{color:var(--gold2); margin:.2em 0 .4em; font-weight:700}
+h3{color:var(--gold); margin:1em 0 .4em; border-bottom:1px solid var(--line); padding-bottom:.2em}
+.muted{color:var(--muted); font-size:.9em}
+.hint{color:var(--muted); font-size:.82em; font-style:italic; margin-top:1em}
+button{font-family:inherit; cursor:pointer}
+b{color:var(--gold2)}
+i{color:var(--muted)}
+
+/* HUD */
+.hud{
+  display:flex; justify-content:space-between; align-items:center; gap:1rem;
+  padding:.6rem 1rem; background:linear-gradient(180deg,#2c2117,#211910);
+  border-bottom:2px solid var(--gold); position:sticky; top:0; z-index:5; flex-wrap:wrap;
+}
+.home-btn{font-size:1.5rem; line-height:1; background:#33271a; border:1px solid var(--gold);
+  color:var(--gold2); border-radius:10px; padding:.35em .55em; cursor:pointer; flex:0 0 auto}
+.home-btn:hover{background:#3f2f1c}
+.home-btn.on{background:var(--gold); border-color:var(--gold2)}
+.hud-left{flex:1; min-width:200px}
+.hero-name{font-size:1.05rem; font-weight:700; color:var(--gold2)}
+.hero-name .lvl{font-size:.75rem; color:var(--muted); font-weight:400; margin-left:.4em}
+.res-strip{display:flex; gap:.8rem; font-weight:700}
+.res-strip span{background:#1c150e; padding:.3em .6em; border:1px solid var(--line); border-radius:6px}
+
+/* bars */
+.bar{position:relative; height:16px; background:#120d08; border:1px solid var(--line);
+  border-radius:8px; overflow:hidden; margin:3px 0}
+.bar .fill{height:100%; transition:width .25s; background:linear-gradient(90deg,#9c7a2e,var(--gold))}
+.bar.hp .fill{background:linear-gradient(90deg,#7a2b22,var(--hp))}
+.bar.mp .fill{background:linear-gradient(90deg,#23477a,var(--mp))}
+.bar.xp .fill{background:linear-gradient(90deg,#3c6b2e,var(--xp))}
+.xpwrap{display:flex; align-items:center; gap:.4em}
+.xplabel{font-size:.65rem; color:var(--xp); min-width:34px; text-transform:uppercase; letter-spacing:.04em}
+.xpwrap .bar{flex:1}
+#toast{position:fixed; top:64px; left:50%; transform:translateX(-50%) translateY(-24px); z-index:30;
+  background:linear-gradient(180deg,#f0c469,#9c7a2e); color:#1a130c; font-weight:800; font-size:1.05rem;
+  padding:.55em 1.4em; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.6); border:1px solid #fff3cf;
+  opacity:0; pointer-events:none; transition:opacity .35s, transform .35s}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+.bar span{position:absolute; inset:0; text-align:center; font-size:11px; line-height:16px; text-shadow:0 1px 2px #000}
+.bar.tiny{height:13px} .bar.tiny span{line-height:13px; font-size:10px}
+
+/* layout */
+.content{max-width:1000px; margin:1rem auto; padding:0 1rem}
+.log{position:fixed; right:8px; bottom:78px; width:280px; max-height:40vh; background:#1a130c;
+  border:1px solid var(--line); border-radius:8px; overflow:hidden; z-index:4; display:flex; flex-direction:column}
+.log-title{background:#241a10; padding:.3em .6em; color:var(--gold); font-size:.85em; border-bottom:1px solid var(--line)}
+.logbox{overflow:auto; padding:.4em .6em; font-size:.8em; line-height:1.5}
+.logbox div{border-bottom:1px dashed #2a2016; padding:.15em 0}
+
+/* tabs */
+.tabs{position:fixed; bottom:0; left:0; right:0; display:flex; overflow-x:auto;
+  background:#1a130c; border-top:2px solid var(--gold); z-index:6;
+  padding-bottom:env(safe-area-inset-bottom, 0px)}
+.tab{flex:1; min-width:72px; background:none; border:none; color:var(--muted);
+  padding:.4em .2em; font-size:1.3rem; display:flex; flex-direction:column; align-items:center; gap:2px}
+.tab small{font-size:.6rem}
+.tab.on{color:var(--gold2); background:#2a1f12}
+.tab.home{color:var(--gold2); border-right:1px solid var(--line)}
+.tabicon{display:block; width:30px; height:30px; margin:0 auto 1px}
+.tabicon .artframe>img{object-fit:cover; border-radius:5px}
+.tabicon .bemoji{font-size:1.3rem}
+.page-banner{height:100px}
+
+/* tower */
+.build-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.7rem}
+.build{background:linear-gradient(180deg,var(--panel2),var(--panel)); border:1px solid var(--line);
+  border-radius:10px; padding:.8rem; text-align:left; color:var(--txt); transition:.15s}
+.build:hover{border-color:var(--gold); transform:translateY(-2px)}
+.bicon{font-size:1.8rem} .bname{font-weight:700; color:var(--gold2); margin:.2em 0}
+.bdesc{font-size:.78rem; color:var(--muted)}
+
+/* panels */
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:1rem}
+.cols{display:flex; gap:1.2rem; flex-wrap:wrap}
+.col{flex:1; min-width:280px}
+.stat-row{margin-bottom:.5rem}
+.sname{font-size:.95rem} .sdesc{font-size:.74rem; color:var(--muted)}
+.kvgrid{display:grid; grid-template-columns:1fr 1fr; gap:.2rem .8rem}
+.kv{display:flex; justify-content:space-between; border-bottom:1px dashed #2a2016; padding:.15em 0; font-size:.85rem}
+.big-kv{font-size:1.1rem; margin:.5em 0}
+.spell-list{padding-left:1.1em; font-size:.82rem; line-height:1.5}
+.tag{background:#33271a; color:var(--gold); border-radius:4px; padding:0 .35em; font-size:.78em}
+
+/* equipment + items */
+.equip-slot{display:flex; gap:.5em; align-items:center; padding:.2em 0; font-size:.88rem; border-bottom:1px dashed #2a2016}
+.slabel{width:70px; color:var(--muted)} .iname{color:var(--gold2)}
+.inv-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:.6rem}
+.item-card{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem}
+.item-card.оружие{border-left:3px solid #b5403a}
+.item-card.броня{border-left:3px solid #6f7fa8}
+.item-card.бижутерия{border-left:3px solid var(--gold)}
+.item-card.эликсир,.item-card.зелье,.item-card.мазь{border-left:3px solid #6fa84f}
+.ic-type{color:var(--muted); font-size:.72rem} .ic-stats{margin:.2em 0}
+.ic-act{display:flex; gap:.3em; margin-top:.3em}
+
+/* buttons */
+.mini{background:#33271a; border:1px solid var(--line); color:var(--txt); border-radius:6px; padding:.25em .6em; font-size:.78rem}
+.mini:hover{border-color:var(--gold)}
+.mini:disabled{opacity:.4; cursor:not-allowed}
+.mini.danger{background:var(--danger)}
+.big{background:linear-gradient(180deg,#caa14a,#9c7a2e); border:none; color:#1a130c; font-weight:700;
+  border-radius:8px; padding:.6em 1.2em; font-size:.95rem; margin:.4em .4em .4em 0}
+.big:hover{filter:brightness(1.1)}
+
+/* forms */
+.form-row{display:flex; align-items:center; gap:.6em; margin:.5em 0; flex-wrap:wrap}
+.form-row label{width:160px; color:var(--muted)}
+select{background:#1a130c; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:.4em; font-family:inherit}
+
+/* resources / shop / recipes */
+.res-inv{display:flex; flex-wrap:wrap; gap:.4em; margin:.6em 0}
+.res-chip,.res-strip span{font-size:.82rem}
+.res-chip{background:#1c150e; border:1px solid var(--line); border-radius:6px; padding:.2em .5em}
+.gather-grid{display:flex; flex-wrap:wrap; gap:.4em}
+.shop-row{display:grid; grid-template-columns:1fr auto auto auto auto; gap:.5em; align-items:center; padding:.25em 0; border-bottom:1px dashed #2a2016; font-size:.88rem}
+.recipe-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.6rem}
+.recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem}
+.recipe.locked{opacity:.55}
+.rc-out .ws{color:var(--muted); font-size:.78em} .rc-in{color:var(--muted); margin:.3em 0}
+
+/* academy / quests */
+.academy-row{padding:.4em 0; border-bottom:1px dashed #2a2016; font-size:.85rem; opacity:.6}
+.academy-row.seen{opacity:1}
+
+/* энциклопедия */
+.enc-search{width:100%; box-sizing:border-box; margin:.4em 0 .8em; padding:.6em .8em; border-radius:8px;
+  border:1px solid var(--line); background:#1a130c; color:var(--txt); font-family:inherit; font-size:.95rem}
+.enc-list{display:flex; flex-direction:column; gap:.4em}
+.enc{background:var(--panel2); border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.enc>summary{cursor:pointer; padding:.6em .8em; font-weight:700; color:var(--gold2); list-style:none}
+.enc>summary::-webkit-details-marker{display:none}
+.enc>summary::before{content:'▸ '; color:var(--gold)}
+.enc[open]>summary::before{content:'▾ '}
+.enc[open]>summary{border-bottom:1px solid var(--line)}
+.enc-body{padding:.6em .9em; font-size:.86rem; line-height:1.55}
+.enc-body p{margin:.4em 0}
+.enc-ul{margin:.3em 0; padding-left:1.1em}
+.enc-ul li{margin:.25em 0}
+.enc-sub{margin:.5em 0; padding-left:.4em; border-left:2px solid var(--line)}
+.quest{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.6rem; margin:.5em 0}
+.quest.done{border-color:var(--xp)}
+.q-desc{font-size:.82rem; color:var(--muted); margin:.2em 0}
+.q-reward{font-size:.8rem; color:var(--gold)}
+
+/* combat */
+.combat-overlay{position:fixed; inset:0; background:rgba(0,0,0,.8); display:none; z-index:20; align-items:center; justify-content:center; padding:1rem}
+.combat-overlay.open{display:flex}
+.combat-window{background:var(--panel); border:2px solid var(--gold); border-radius:12px; width:100%; max-width:680px; max-height:92vh; overflow:auto}
+.combat-title{background:#241a10; padding:.5em 1em; color:var(--gold2); font-weight:700; border-bottom:1px solid var(--line)}
+#combat-body{padding:1rem}
+.combat-hero{margin-bottom:.6em}
+.combat-mobs{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.5em}
+.mob{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5em; cursor:pointer}
+.mob.sel{border-color:var(--gold)} .mob.dead{opacity:.35}
+.mname{font-weight:700; color:var(--gold2); font-size:.9rem}
+.mtags{font-size:.72rem; color:var(--muted); margin-top:.2em}
+.combat-controls{margin:.8em 0; background:#1c150e; border:1px solid var(--line); border-radius:8px; padding:.6em}
+.cc-row{display:flex; align-items:center; gap:.5em; flex-wrap:wrap; margin:.4em 0}
+.cc-row label{color:var(--muted); font-size:.85rem}
+.combat-log{background:#120d08; border:1px solid var(--line); border-radius:8px; padding:.5em; font-size:.8rem; max-height:170px; overflow:auto; line-height:1.5}
+.combat-result{text-align:center; padding:1em}
+.combat-result.win h3{color:var(--xp)} .combat-result.lose h3{color:var(--hp)}
+.loot{margin:.6em 0; line-height:1.7}
+
+/* процедурная графика (SVG) */
+.banner{position:relative; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:.8rem; height:120px}
+.banner .art-bg{display:block; width:100%; height:100%}
+.banner-cap{position:absolute; left:8px; bottom:6px; color:#fff; font-weight:700; font-size:.85rem; text-shadow:0 1px 4px #000, 0 0 8px #000}
+.art-mob{width:100%; height:100%; display:block}
+.mob-art{width:64px; height:64px; margin:0 auto; background:radial-gradient(circle at 50% 40%, rgba(255,255,255,.06), transparent 70%)}
+.ic-art{width:48px; height:48px; float:right; margin-left:.4em}
+.art-item{width:100%; height:100%}
+.combat-backdrop{position:relative; height:84px; border-radius:8px; overflow:hidden; margin-bottom:.6em; border:1px solid var(--line)}
+.combat-backdrop .art-bg{width:100%; height:100%}
+
+/* рамка «PNG поверх SVG-заглушки» — реальные арты подключаются по мере появления */
+.artframe{position:relative; display:block; width:100%; height:100%}
+.artframe>svg,.artframe>img{position:absolute; inset:0; width:100%; height:100%}
+.artframe>img{object-fit:cover}
+.af-mob>img,.af-item>img{object-fit:contain}
+.bemoji{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.8rem}
+.bicon{position:relative; width:48px; height:48px}
+
+@media(max-width:640px){
+  .log{display:none}
+  .form-row label{width:auto}
+  .kvgrid{grid-template-columns:1fr}
+}
