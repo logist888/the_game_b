@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вавилон — Админка</title>
+  <style>
+    :root {
+      --bg:#0f0d0a; --panel:#1a140e; --panel2:#231a11;
+      --line:#3a2d1f; --gold:#d9a441; --gold2:#f0c469;
+      --txt:#e9e0d0; --muted:#9c8c74;
+      --hp:#b5403a; --mp:#3f6fb0; --xp:#6fa84f;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--txt);font-family:"Segoe UI",system-ui,sans-serif;min-height:100vh}
+    h1{color:var(--gold2);font-size:1.3rem;padding:.8rem 1rem;border-bottom:2px solid var(--gold);
+       background:var(--panel);display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+    h1 .sub{color:var(--muted);font-size:.8rem;font-weight:400}
+    h1 .actions{margin-left:auto;display:flex;gap:.5rem}
+
+    /* Auth */
+    #auth{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;gap:.8rem}
+    #auth p{color:var(--muted);font-size:.9rem}
+    #keyInput{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;
+       padding:.7em 1.2em;font-size:1rem;width:320px;font-family:inherit;max-width:90vw}
+    .btn{background:linear-gradient(180deg,#caa14a,#9c7a2e);border:none;color:#1a130c;font-weight:700;
+       border-radius:8px;padding:.55em 1.4em;font-size:.9rem;cursor:pointer}
+    .btn:hover{filter:brightness(1.1)}
+    .btn.sm{background:#33271a;border:1px solid var(--line);color:var(--txt);font-weight:400;font-size:.78rem;padding:.3em .8em}
+    .btn.sm:hover{border-color:var(--gold)}
+    .err{color:#f44336;font-size:.88rem}
+
+    /* Summary */
+    #summary{display:none;flex-wrap:wrap;gap:.8rem;padding:.8rem 1rem}
+    .sc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem 1.1rem;min-width:110px}
+    .sc .v{font-size:1.7rem;font-weight:700;color:var(--gold2)}
+    .sc .l{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+    /* Toolbar */
+    #toolbar{display:none;padding:.4rem 1rem;background:var(--panel);border-bottom:1px solid var(--line);
+             display:none;align-items:center;gap:.6rem;flex-wrap:wrap}
+    #search{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:6px;
+             padding:.35em .8em;font-size:.85rem;font-family:inherit;width:220px}
+
+    /* Table */
+    #dash{display:none;padding:0 1rem 2rem;overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:680px}
+    th{background:var(--panel);color:var(--gold);text-align:left;padding:.5em .7em;
+       border-bottom:2px solid var(--line);cursor:pointer;user-select:none;white-space:nowrap}
+    th:hover{color:var(--gold2)}
+    th.active{color:var(--gold2)}
+    td{padding:.4em .7em;border-bottom:1px solid var(--line);vertical-align:middle}
+    .pr{cursor:pointer;transition:background .1s}
+    .pr:hover{background:var(--panel2)}
+    .dr td{background:var(--panel);padding:.8em 1rem}
+    .dr{display:none}
+    .dr.open{display:table-row}
+
+    .rank{color:var(--muted);font-size:.8rem;text-align:center}
+    .badge{background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+           padding:.1em .4em;font-size:.78em;color:var(--gold2)}
+    .uid{color:var(--muted);font-size:.72rem}
+
+    /* Detail grid */
+    .dg{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.8rem}
+    .ds h4{color:var(--gold);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;
+           border-bottom:1px solid var(--line);padding-bottom:.2em;margin-bottom:.35em}
+    .kv{display:flex;justify-content:space-between;font-size:.8rem;padding:.1em 0}
+    .kv span{color:var(--muted)}
+    .kv b{color:var(--gold2)}
+    .chips{display:flex;flex-wrap:wrap;gap:.2em;margin-top:.2em}
+    .chip{background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+           padding:.1em .4em;font-size:.74rem;color:var(--txt)}
+    .bm{height:8px;background:#120d08;border-radius:3px;overflow:hidden;margin:2px 0 4px}
+    .bm div{height:100%}
+
+    /* Loading */
+    #loading{display:none;text-align:center;padding:3rem;color:var(--muted)}
+    .spin{display:inline-block;width:28px;height:28px;border:3px solid var(--line);
+           border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite;margin-bottom:.6rem}
+    @keyframes sp{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+
+<h1>
+  ⚔️ Вавилон — Администратор
+  <span class="sub" id="hsub"></span>
+  <div class="actions" id="hactions" style="display:none">
+    <button class="btn sm" onclick="refresh()">↺ Обновить</button>
+  </div>
+</h1>
+
+<div id="auth">
+  <p>Введите ADMIN_KEY из настроек Cloudflare Worker</p>
+  <input id="keyInput" type="password" placeholder="ADMIN_KEY" autofocus>
+  <button class="btn" onclick="loadData()">Войти →</button>
+  <div id="aerr" class="err"></div>
+</div>
+
+<div id="loading"><div class="spin"></div><br>Загрузка игроков…</div>
+
+<div id="summary" style="display:none"></div>
+
+<div id="toolbar" style="display:none">
+  <input id="search" type="search" placeholder="🔎 Поиск по имени или ID" oninput="renderTable()">
+  <span style="color:var(--muted);font-size:.8rem" id="tcount"></span>
+</div>
+
+<div id="dash" style="display:none"></div>
+
+<script>
+const WORKER = 'https://babylon-save.logist888.workers.dev';
+let players = [];
+let sortKey = 'xp';
+let sortDir = -1;
+let adminKey = '';
+
+async function loadData() {
+  adminKey = document.getElementById('keyInput').value.trim();
+  if (!adminKey) return;
+  document.getElementById('aerr').textContent = '';
+  document.getElementById('auth').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  try {
+    const r = await fetch(`${WORKER}/admin?key=${encodeURIComponent(adminKey)}`);
+    if (r.status === 403) throw new Error('Неверный ключ');
+    if (!r.ok) throw new Error(`Ошибка ${r.status}`);
+    players = await r.json();
+    document.getElementById('loading').style.display = 'none';
+    renderAll();
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('aerr').textContent = e.message;
+    document.getElementById('auth').style.display = 'flex';
+  }
+}
+
+async function refresh() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('dash').style.display = 'none';
+  try {
+    const r = await fetch(`${WORKER}/admin?key=${encodeURIComponent(adminKey)}`);
+    if (!r.ok) throw new Error();
+    players = await r.json();
+  } catch(e) {}
+  document.getElementById('loading').style.display = 'none';
+  renderAll();
+}
+
+document.getElementById('keyInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadData(); });
+
+function renderAll() {
+  const n = players.length;
+  document.getElementById('hsub').textContent = `— ${n} игрок${n===1?'':n<5?'а':'ов'}`;
+  document.getElementById('hactions').style.display = 'flex';
+  renderSummary();
+  document.getElementById('toolbar').style.display = 'flex';
+  renderTable();
+}
+
+function renderSummary() {
+  const el = document.getElementById('summary');
+  el.style.display = 'flex';
+  const n = players.length;
+  if (!n) { el.innerHTML = '<div class="sc"><div class="v">0</div><div class="l">Игроков</div></div>'; return; }
+  const avgLvl = (players.reduce((a,p) => a+(p.xpLevel||1), 0)/n).toFixed(1);
+  const maxLvl = Math.max(...players.map(p => p.xpLevel||1));
+  const kills  = players.reduce((a,p) => a+(p.counters?.kills||0), 0);
+  const day    = players.filter(p => p.lastSaved && Date.now()-p.lastSaved < 86400000).length;
+  const week   = players.filter(p => p.lastSaved && Date.now()-p.lastSaved < 604800000).length;
+  el.innerHTML = [
+    ['Игроков',n], ['Ср. уровень',avgLvl], ['Макс. уровень',maxLvl],
+    ['Активны сегодня',day], ['Активны за неделю',week], ['Убийств суммарно',kills.toLocaleString()],
+  ].map(([l,v]) => `<div class="sc"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+
+function sorted() {
+  const q = document.getElementById('search')?.value.trim().toLowerCase() || '';
+  let list = q ? players.filter(p =>
+    (p.name||'').toLowerCase().includes(q) || String(p._userId).includes(q)
+  ) : [...players];
+  list.sort((a,b) => {
+    const va = get(a, sortKey), vb = get(b, sortKey);
+    return sortDir * (vb - va);
+  });
+  return list;
+}
+
+function get(p, k) {
+  if (k==='xp')         return p.xp||0;
+  if (k==='xpLevel')    return p.xpLevel||0;
+  if (k==='kills')      return p.counters?.kills||0;
+  if (k==='gold')       return p.resources?.gold||0;
+  if (k==='danger')     return p.danger||0;
+  if (k==='lastSaved')  return p.lastSaved||0;
+  if (k==='crafted')    return p.counters?.crafted||0;
+  return 0;
+}
+
+function setSort(k) {
+  sortDir = sortKey===k ? -sortDir : -1;
+  sortKey = k;
+  renderTable();
+}
+
+function th(k, label) {
+  const a = sortKey===k;
+  const arrow = a ? (sortDir<0?' ↓':' ↑') : '';
+  return `<th class="${a?'active':''}" onclick="setSort('${k}')">${label}${arrow}</th>`;
+}
+
+function renderTable() {
+  const list = sorted();
+  document.getElementById('tcount').textContent = `${list.length} из ${players.length}`;
+  const el = document.getElementById('dash');
+  el.style.display = 'block';
+  const head = `<tr>
+    <th style="width:42px">#</th>
+    <th>Имя</th>
+    ${th('xpLevel','Ур.')}
+    ${th('xp','Опыт')}
+    ${th('kills','Убийств')}
+    ${th('crafted','Создано')}
+    ${th('gold','Золото')}
+    ${th('danger','Опасн.')}
+    ${th('lastSaved','Онлайн')}
+  </tr>`;
+  const rows = list.map((p, i) => {
+    const rn = i+1;
+    const medal = rn===1?'🥇':rn===2?'🥈':rn===3?'🥉':rn;
+    return `
+<tr class="pr" onclick="toggleDet('${p._userId}')">
+  <td class="rank">${medal}</td>
+  <td><b>${esc(p.name||'—')}</b><br><span class="uid">ID ${p._userId}</span></td>
+  <td><span class="badge">${p.xpLevel||1}</span></td>
+  <td>${(p.xp||0).toLocaleString()}</td>
+  <td>${p.counters?.kills||0}</td>
+  <td>${p.counters?.crafted||0}</td>
+  <td>🪙 ${(p.resources?.gold||0).toLocaleString()}</td>
+  <td>${p.danger||1}</td>
+  <td style="font-size:.75rem;color:var(--muted)">${ago(p.lastSaved)}</td>
+</tr>
+<tr class="dr" id="det-${p._userId}"><td colspan="9">${detail(p)}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function toggleDet(uid) {
+  document.getElementById('det-'+uid)?.classList.toggle('open');
+}
+
+function detail(p) {
+  const sn = {str:'Сила',int:'Интел.',agi:'Ловкость',end:'Выносл.',fur:'Ярость',
+               ref:'Рефлекс',luk:'Удача',rea:'Реакция',fai:'Вера'};
+  const eq = p.equip||{};
+  const equipped = ['weapon','head','body','shield','ring','amulet','earring']
+    .filter(s=>eq[s]).map(s=>`<div class="chip">🔸 ${esc(eq[s].name)}</div>`).join('');
+  const inv = (p.inventory||[]).map(it=>`<div class="chip">${esc(it.name)}${it.qty?` ×${it.qty}`:''}</div>`).join('');
+  const spells = (p.spells||[]).length;
+
+  return `<div class="dg">
+    <div class="ds">
+      <h4>Ресурсы и здоровье</h4>
+      <div class="kv"><span>HP</span><b>${Math.round(p.hp||0)} / ${Math.round(p.maxHp||0)}</b></div>
+      <div class="bm"><div style="width:${pct(p.hp,p.maxHp)}%;background:var(--hp)"></div></div>
+      <div class="kv"><span>MP</span><b>${Math.round(p.mp||0)} / ${Math.round(p.maxMp||0)}</b></div>
+      <div class="bm"><div style="width:${pct(p.mp,p.maxMp)}%;background:var(--mp)"></div></div>
+      <div class="kv"><span>Опыт</span><b>${(p.xp||0).toLocaleString()}</b></div>
+      <div class="bm"><div style="width:${pct(p.xp, Math.round(Math.pow(p.xpLevel||1,1.55)*80))}%;background:var(--xp)"></div></div>
+      <div class="kv" style="margin-top:.3em"><span>Золото</span><b>🪙 ${(p.resources?.gold||0).toLocaleString()}</b></div>
+      <div class="kv"><span>Искры</span><b>🔥 ${p.resources?.sparks||0}</b></div>
+      <div class="kv"><span>Души</span><b>👻 ${p.resources?.souls||0}</b></div>
+    </div>
+    <div class="ds">
+      <h4>Статы</h4>
+      ${Object.entries(sn).map(([k,l]) => p.stats?.[k]
+        ? `<div class="kv"><span>${l}</span><b>${p.stats[k].val||0}</b></div>` : '').join('')}
+      <div class="kv" style="margin-top:.3em"><span>Заклинаний</span><b>${spells}</b></div>
+    </div>
+    <div class="ds">
+      <h4>Активность</h4>
+      <div class="kv"><span>Убийств</span><b>${p.counters?.kills||0}</b></div>
+      <div class="kv"><span>Создано вещей</span><b>${p.counters?.crafted||0}</b></div>
+      <div class="kv"><span>Собрано</span><b>${p.counters?.gathered||0}</b></div>
+      <div class="kv"><span>Походов</span><b>${p.counters?.expeditions||0}</b></div>
+      <div class="kv"><span>Локаций открыто</span><b>${(p.visitedLocations||[]).length}</b></div>
+      <div class="kv" style="margin-top:.3em"><span>Последний вход</span><b>${ago(p.lastSaved)}</b></div>
+    </div>
+    <div class="ds">
+      <h4>Экипировка</h4>
+      <div class="chips">${equipped||'<span style="color:var(--muted);font-size:.8rem">Ничего</span>'}</div>
+      <h4 style="margin-top:.6em">Рюкзак (${(p.inventory||[]).length})</h4>
+      <div class="chips">${inv||'<span style="color:var(--muted);font-size:.8rem">Пусто</span>'}</div>
+    </div>
+  </div>`;
+}
+
+function pct(cur, max) { return max > 0 ? Math.min(100, Math.max(0, (cur/max)*100)).toFixed(1) : 0; }
+function esc(s) { return String(s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ago(ts) {
+  if (!ts) return '—';
+  const d = Date.now()-ts;
+  if (d < 60000)   return 'только что';
+  if (d < 3600000) return `${Math.floor(d/60000)} мин назад`;
+  if (d < 86400000) return `${Math.floor(d/3600000)} ч назад`;
+  if (d < 604800000) return `${Math.floor(d/86400000)} дн назад`;
+  return new Date(ts).toLocaleDateString('ru');
+}
+</script>
+</body>
+</html>
