@@ -42,6 +42,7 @@ function newPlayer(name) {
     referredBy: null,
     refRegistered: false,
     welcomeSeen: false,
+    pvp: { wins: 0, losses: 0 },
   };
 }
 
@@ -129,6 +130,7 @@ function recalc() {
   if (player.xpLevel == null) player.xpLevel = 1;   // миграция старых сохранений
   if (player.xp == null) player.xp = 0;
   if (player.welcomeSeen == null) player.welcomeSeen = true; // старые игроки не видят приветствие
+  if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
   const v = (k) => player.stats[k].val + equipBonus(k);
   const maxHp = 100 + v('end') * 5;
   const maxMp = 20 + v('int') * 5;
