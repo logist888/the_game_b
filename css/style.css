@@ -171,10 +171,15 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .mob.sel{border-color:var(--gold)} .mob.dead{opacity:.35}
 .mname{font-weight:700; color:var(--gold2); font-size:.9rem}
 .mtags{font-size:.72rem; color:var(--muted); margin-top:.2em}
-.combat-controls{margin:.8em 0; background:#1c150e; border:1px solid var(--line); border-radius:8px; padding:.6em}
-.cc-row{display:flex; align-items:center; gap:.5em; flex-wrap:wrap; margin:.4em 0}
-.cc-row label{color:var(--muted); font-size:.85rem}
-.combat-log{background:#120d08; border:1px solid var(--line); border-radius:8px; padding:.5em; font-size:.8rem; max-height:170px; overflow:auto; line-height:1.5}
+.combat-controls{margin:.6em 0; background:#1c150e; border:1px solid var(--line); border-radius:8px; padding:.5em}
+.cc-zones{display:flex; align-items:flex-end; gap:.4em; margin-bottom:.4em}
+.cc-field{display:flex; flex-direction:column; gap:2px; flex:1}
+.cc-field label{color:var(--muted); font-size:.75rem}
+.cc-field select{width:100%}
+.cc-atk{margin:0 0 0 .3em; white-space:nowrap; flex-shrink:0}
+.cc-row{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin:.35em 0}
+.cc-row select{flex:1; min-width:0}
+.combat-log{background:#120d08; border:1px solid var(--line); border-radius:8px; padding:.4em .5em; font-size:.78rem; max-height:110px; overflow-y:auto; line-height:1.5; margin:.5em 0}
 .combat-result{text-align:center; padding:1em}
 .combat-result.win h3{color:var(--xp)} .combat-result.lose h3{color:var(--hp)}
 .loot{margin:.6em 0; line-height:1.7}
