@@ -31,13 +31,14 @@
     try { tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(type || 'success'); } catch (e) {}
   };
 
-  // Данные пользователя — используются для ключа сохранения и имени героя
+  // Данные пользователя — ключ сохранения, имя героя, подпись для бэкенда
   try {
     const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
     if (u && u.id) {
       window.TG_USER = {
         id: u.id,
         name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || null,
+        initData: tg.initData || '',  // raw-строка для HMAC-верификации на воркере
       };
     }
   } catch (e) {}
