@@ -4,6 +4,10 @@
  */
 
 const SAVE_KEY = window.TG_USER ? `babylon_save_v1_${window.TG_USER.id}` : 'babylon_save_v1';
+
+// URL Cloudflare Worker — заменить после деплоя (см. babylon/worker/save-worker.js)
+const CLOUD_URL = 'https://babylon-save.YOUR_SUBDOMAIN.workers.dev';
+let _cloudTimer = null;
 let _itemId = Date.now();
 
 function newPlayer(name) {
@@ -189,7 +193,11 @@ function pushLog(msg) {
 }
 
 // --- Сохранение ---
-function saveGame() { localStorage.setItem(SAVE_KEY, JSON.stringify(player)); }
+function saveGame() {
+  player.lastSaved = Date.now();
+  localStorage.setItem(SAVE_KEY, JSON.stringify(player));
+  _scheduleCloudSave();
+}
 function loadGame() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
@@ -205,5 +213,55 @@ function resetGame() {
   saveGame();
 }
 
+// --- Облачный sync (Cloudflare Workers + KV) ---
+function _cloudReady() {
+  return window.TG_USER && TG_USER.initData && !CLOUD_URL.includes('YOUR_SUBDOMAIN');
+}
+
+function _scheduleCloudSave() {
+  if (!_cloudReady()) return;
+  clearTimeout(_cloudTimer);
+  _cloudTimer = setTimeout(_pushToCloud, 30000);
+}
+
+async function _pushToCloud() {
+  if (!_cloudReady()) return;
+  try {
+    await fetch(`${CLOUD_URL}/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: TG_USER.initData, save: player }),
+    });
+  } catch (e) {}
+}
+
+async function syncFromCloud() {
+  if (!window.TG_USER) return;
+  if (CLOUD_URL.includes('YOUR_SUBDOMAIN')) return;
+  try {
+    const r = await fetch(`${CLOUD_URL}/save?user_id=${TG_USER.id}`);
+    if (!r.ok) return;
+    const remote = await r.json();
+    if (!remote || typeof remote !== 'object') return;
+    const local = loadGame();
+    if (!local || (remote.lastSaved || 0) > (local.lastSaved || 0)) {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(remote));
+      player = remote;
+      recalc();
+      applyRegen();
+      if (typeof renderAll === 'function') renderAll();
+    }
+  } catch (e) {}
+}
+
 recalc();
 applyRegen();
+
+// Подтягиваем облачное сохранение после загрузки страницы
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', syncFromCloud);
+  } else {
+    syncFromCloud();
+  }
+}
