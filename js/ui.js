@@ -109,14 +109,25 @@ function viewStats() {
     <div class="kv"><span>Реген HP/мин</span><b>${d.hpRegen}</b></div>
     <div class="kv"><span>Реген MP/мин</span><b>${d.mpRegen}</b></div>`;
 
+  const SLOT_ICONS = {weapon:'⚔️',head:'🪖',body:'🛡',shield:'🔰',ring:'💍',amulet:'📿',earring:'✨'};
   const slots = [['weapon','Оружие'],['head','Шлем'],['body','Доспех'],['shield','Щит'],['ring','Кольцо'],['amulet','Амулет'],['earring','Серьги']];
-  const equipHtml = slots.map(([s, label]) => {
+  const equipHtml = `<div class="equip-grid">${slots.map(([s, label]) => {
     const it = player.equip[s];
-    return `<div class="equip-slot">
-      <span class="slabel">${label}</span>
-      ${it ? `<span class="iname">${esc(it.name)}</span> <button class="mini" onclick="unequip('${s}')">снять</button>` : '<span class="muted">пусто</span>'}
+    let stat = '';
+    if (it) {
+      if (it.dmg) stat = `${it.dmg[0]}–${it.dmg[1]} урон`;
+      else if (it.armor) stat = `${it.armor} броня`;
+      else if (it.bonus) stat = Object.entries(it.bonus).map(([k,v])=>`+${v} ${STATS[k]?.name||k}`).join(', ');
+    }
+    return `<div class="equip-card ${it ? 'equipped' : 'empty'}">
+      <div class="equip-img">${it ? itemArt(it) : `<span class="equip-empty-icon">${SLOT_ICONS[s]}</span>`}</div>
+      <div class="equip-label">${label}</div>
+      ${it ? `<div class="equip-name">${esc(it.name)}</div>
+        ${stat ? `<div class="equip-stat">${stat}</div>` : ''}
+        <button class="mini" onclick="unequip('${s}')">снять</button>`
+        : `<div class="equip-name muted">пусто</div>`}
     </div>`;
-  }).join('');
+  }).join('')}</div>`;
 
   const inv = player.inventory.length ? player.inventory.map(itemCard).join('') : '<p class="muted">Рюкзак пуст.</p>';
 
