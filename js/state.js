@@ -244,11 +244,16 @@ function _scheduleCloudSave() {
 async function _pushToCloud() {
   if (!_cloudReady()) return;
   try {
-    await fetch(`${CLOUD_URL}/save`, {
+    const resp = await fetch(`${CLOUD_URL}/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData: TG_USER.initData, save: player }),
     });
+    // После успешного пуша помечаем реферал как зарегистрированный локально
+    if (resp.ok && player.referredBy && !player.refRegistered) {
+      player.refRegistered = true;
+      localStorage.setItem(SAVE_KEY, JSON.stringify(player));
+    }
   } catch (e) {}
 }
 
@@ -284,6 +289,9 @@ async function syncFromCloud() {
 
     if (pendingBonus || remoteRefCount != null) saveGame();
     if (typeof render === 'function') render();
+
+    // Новый реферальный игрок: пушим немедленно вместо ожидания 30 с
+    if (player.referredBy && !player.refRegistered) _pushToCloud();
   } catch (e) {}
 }
 
