@@ -59,6 +59,7 @@ function gather(res) {
   addRes(res, qty);
   player.counters.gathered += qty;
   pushLog(`⛏️ ${entry.name}: +${qty} ${RESOURCES[res].name}.`);
+  if (typeof showToast === 'function') showToast(`+${qty} ${RESOURCES[res].icon} ${RESOURCES[res].name}`);
   checkQuests();
   render();
 }
