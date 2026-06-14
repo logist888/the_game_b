@@ -3,7 +3,7 @@
  * параметры (HP/MP/атака/защита/урон), инвентарь, сохранение в localStorage.
  */
 
-const SAVE_KEY = 'babylon_save_v1';
+const SAVE_KEY = window.TG_USER ? `babylon_save_v1_${window.TG_USER.id}` : 'babylon_save_v1';
 let _itemId = Date.now();
 
 function newPlayer(name) {
@@ -11,7 +11,7 @@ function newPlayer(name) {
   // База: всё по 5 единиц; прогресс роста по геометрической прогрессии.
   STAT_ORDER.forEach((k) => { stats[k] = { val: 5, prog: 0, cap: 40 }; });
   return {
-    name: name || 'Полубог',
+    name: name || (window.TG_USER && window.TG_USER.name) || 'Полубог',
     level: 1,
     danger: 1,            // «опасность» героя — влияет на силу мобов
     xp: 0,
