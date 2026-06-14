@@ -344,22 +344,20 @@ function renderCombat() {
       <button class="big" onclick="finishCombatView()">Вернуться в башню</button>
     </div>` : `
     <div class="combat-controls">
-      <div class="cc-row">
-        <label>Атаковать в зону</label>
-        <select onchange="combatSel.atkZone=this.value">${zoneOpts(combatSel.atkZone)}</select>
-        <label>Блок зоны</label>
-        <select onchange="combatSel.blockZone=this.value">${zoneOpts(combatSel.blockZone)}</select>
-        <button class="big" onclick="playerAttack(combatSel.atkZone, combatSel.blockZone); renderCombat()">🗡️ Удар + блок</button>
+      <div class="cc-zones">
+        <div class="cc-field"><label>Атака</label><select onchange="combatSel.atkZone=this.value">${zoneOpts(combatSel.atkZone)}</select></div>
+        <div class="cc-field"><label>Блок</label><select onchange="combatSel.blockZone=this.value">${zoneOpts(combatSel.blockZone)}</select></div>
+        <button class="big cc-atk" onclick="playerAttack(combatSel.atkZone, combatSel.blockZone); renderCombat()">🗡️ Удар</button>
       </div>
       <div class="cc-row">
-        <label>Заклинание</label>
         <select onchange="combatSel.spell=this.value" id="spellSel">${spellOpts}</select>
         <button class="mini" onclick="playerCast(document.getElementById('spellSel').value || player.spells[0], combatSel.atkZone); renderCombat()">✨ Каст</button>
+        <button class="mini danger" onclick="playerFlee(); renderCombat()">🏃</button>
       </div>
-      <div class="cc-row"><label>Расходники</label> ${elixirBtns}
-        <button class="mini danger" onclick="playerFlee(); renderCombat()">🏃 Бежать</button>
-      </div>
+      <div class="cc-row">${elixirBtns}</div>
     </div>`;
+
+  const logHtml = `<div class="combat-log" id="clog">${combat.logLines.slice(0, 20).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
 
   const backdrop = combat.ctx.worldIndex != null
     ? worldBg(combat.ctx.worldIndex, combat.ctx.location) : towerArt();
@@ -373,8 +371,8 @@ function renderCombat() {
       </div>
       <div class="combat-mobs">${mobsHtml}</div>
     </div>
-    ${controls}
-    <div class="combat-log">${combat.logLines.slice(0, 14).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+    ${logHtml}
+    ${controls}`;
 }
 
 function lootHtml() {
