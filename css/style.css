@@ -229,6 +229,22 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 @keyframes fadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 @keyframes fadeOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.95)}}
 
+/* PvP арена */
+.pvp-stats{display:flex;gap:1rem;margin:.4em 0 .8em;flex-wrap:wrap}
+.pvp-stats span{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.3em .8em;font-size:.9em}
+.pvp-card{display:flex;align-items:center;justify-content:space-between;gap:.6rem;
+  background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem}
+.pvp-card-info{display:flex;flex-direction:column;gap:.1rem;font-size:.85em}
+.pvp-result{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:1rem;text-align:center}
+.pvp-result.win{border-color:#6fa84f}
+.pvp-result.lose{border-color:#b5403a}
+.pvp-result-title{font-size:1.3rem;font-weight:700;margin-bottom:.3em}
+.pvp-result.win .pvp-result-title{color:#6fa84f}
+.pvp-result.lose .pvp-result-title{color:#b5403a}
+.pvp-result-vs{margin-bottom:.5em;color:var(--muted);font-size:.9em}
+.pvp-log{font-size:.75rem;color:var(--muted);margin:.5em 0;text-align:left;max-height:120px;overflow-y:auto}
+.pvp-rewards{font-size:.85em;margin:.5em 0;color:var(--gold2)}
+
 /* таблица лидеров */
 .lb-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
 .lb-box h3{margin-top:0}
