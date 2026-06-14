@@ -29,9 +29,10 @@ i{color:var(--muted)}
   border-bottom:2px solid var(--gold); position:sticky; top:0; z-index:5; flex-wrap:wrap;
 }
 .home-btn{font-size:1.5rem; line-height:1; background:#33271a; border:1px solid var(--gold);
-  color:var(--gold2); border-radius:10px; padding:.35em .55em; cursor:pointer; flex:0 0 auto}
+  color:var(--gold2); border-radius:10px; padding:.2em; cursor:pointer; flex:0 0 auto; width:44px; height:44px; overflow:hidden}
+.home-btn img{width:100%; height:100%; object-fit:cover; border-radius:8px; display:block}
 .home-btn:hover{background:#3f2f1c}
-.home-btn.on{background:var(--gold); border-color:var(--gold2)}
+.home-btn.on{border-color:var(--gold2); box-shadow:0 0 0 2px var(--gold)}
 .hud-left{flex:1; min-width:200px}
 .hero-name{font-size:1.05rem; font-weight:700; color:var(--gold2)}
 .hero-name .lvl{font-size:.75rem; color:var(--muted); font-weight:400; margin-left:.4em}
