@@ -237,8 +237,7 @@ function itemImgPath(it) {
 function artFrame(base, svg, cls, exts) {
   exts = exts || ['png', 'jpg'];
   const rest = exts.slice(1).join(',');
-  // SVG скрыт по умолчанию; показывается только если все img-варианты не загрузились
-  return `<span class="artframe ${cls || ''}">${svg}<img alt="" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
+  return `<span class="artframe ${cls || ''}"><img alt="" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
 }
 function artImgFallback(img) {
   const rest = (img.dataset.exts || '').split(',').filter(Boolean);
@@ -247,8 +246,6 @@ function artImgFallback(img) {
     img.src = img.dataset.base + '.' + rest[0];
   } else {
     img.remove();
-    const frame = img.closest('.artframe');
-    if (frame) frame.classList.add('no-img');
   }
 }
 
