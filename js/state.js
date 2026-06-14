@@ -303,6 +303,27 @@ async function syncFromCloud() {
   } catch (e) {}
 }
 
+function _scheduleHpNotify() {
+  if (!_cloudReady() || !player.derived) return;
+  if (player.hp >= player.maxHp) { _cancelHpNotify(); return; }
+  const secsUntilFull = Math.ceil((player.maxHp - player.hp) / player.derived.hpRegen * 60);
+  if (secsUntilFull <= 0) return;
+  fetch(`${CLOUD_URL}/hp-notify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: TG_USER.initData, secsUntilFull }),
+  }).catch(() => {});
+}
+
+function _cancelHpNotify() {
+  if (!_cloudReady()) return;
+  fetch(`${CLOUD_URL}/hp-notify`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: TG_USER.initData }),
+  }).catch(() => {});
+}
+
 function _notifyLevelUp(level) {
   if (!_cloudReady()) return;
   fetch(`${CLOUD_URL}/notify`, {
@@ -328,9 +349,12 @@ if (typeof document !== 'undefined') {
     if (document.visibilityState === 'hidden' && _cloudReady()) {
       clearTimeout(_cloudTimer);
       _pushToCloud();
+      _scheduleHpNotify();
+    } else if (document.visibilityState === 'visible' && _cloudReady()) {
+      _cancelHpNotify(); // вернулся — HP возможно уже восстановился
     }
   });
   window.addEventListener('beforeunload', () => {
-    if (_cloudReady()) _pushToCloud();
+    if (_cloudReady()) { _pushToCloud(); _scheduleHpNotify(); }
   });
 }
