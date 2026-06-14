@@ -28,7 +28,7 @@ function resStrip() {
 function render() {
   applyRegen();
   $('hud').innerHTML = `
-    <button class="home-btn ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')" title="На главную — Вавилонская башня">🏯</button>
+    <button class="home-btn ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')" title="На главную — Вавилонская башня"><img src="img/tower/babylon_tower.png" alt="🏯" onerror="this.replaceWith(document.createTextNode('🏯'))"></button>
     <div class="hud-left">
       <div class="hero-name">${esc(player.name)} <span class="lvl">🎖 Уровень ${player.xpLevel} · ⚔️ опасность ${player.danger}</span></div>
       ${bar(player.hp, player.maxHp, 'hp')} ${bar(player.mp, player.maxMp, 'mp')}
@@ -50,7 +50,7 @@ function render() {
   }
   $('main').innerHTML = head + (views[activeView] || viewTower)();
 
-  const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')">🏯<small>Башня</small></button>`;
+  const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
     `<button class="tab ${activeView === b.id ? 'on' : ''}" onclick="setView('${b.id}')"><span class="tabicon">${buildingArt(b.name, b.icon)}</span><small>${b.name}</small></button>`
   ).join('');
