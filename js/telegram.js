@@ -30,4 +30,15 @@
   window.tgHaptic = function (type) {
     try { tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(type || 'success'); } catch (e) {}
   };
+
+  // Данные пользователя — используются для ключа сохранения и имени героя
+  try {
+    const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+    if (u && u.id) {
+      window.TG_USER = {
+        id: u.id,
+        name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || null,
+      };
+    }
+  } catch (e) {}
 })();
