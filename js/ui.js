@@ -18,10 +18,17 @@ function bar(cur, max, cls) {
 
 function resStrip() {
   const r = player.resources;
+  const TYPE_ICON = { 'эликсир': '🧪', 'зелье': '🍶', 'мазь': '🫙' };
+  const potionSpans = player.inventory.filter((it) => it.use).map((it) => {
+    const icon = TYPE_ICON[it.type] || '🧴';
+    const qty = it.qty && it.qty > 1 ? ` ×${it.qty}` : '';
+    return `<span title="${esc(it.name)}">${icon}${qty}</span>`;
+  }).join('');
   return `<div class="res-strip">
     <span title="Золото — игровые деньги">🪙 ${r.gold || 0}</span>
     <span title="Души — премиум-валюта">👻 ${r.souls || 0}</span>
     <span title="Искры — для крафта 3 уровня">🔥 ${r.sparks || 0}</span>
+    ${potionSpans}
   </div>`;
 }
 
