@@ -56,7 +56,7 @@ function render() {
     if (b) head = buildingBanner(b);
   }
   $('main').innerHTML = head + (views[activeView] || viewTower)();
-  if (activeView === 'council') setTimeout(loadRefLeaderboard, 0);
+  if (activeView === 'council') { setTimeout(loadLeaderboard, 0); setTimeout(loadRefLeaderboard, 0); }
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
@@ -331,6 +331,10 @@ function viewCouncil() {
     </div>`;
   }).join('');
   return `<div class="panel"><h2>📜 Совет старейшин</h2>
+    <div class="lb-box">
+      <h3>🏆 Зал славы</h3>
+      <div class="ref-board" id="lbBoard"><span class="muted">⏳ Загрузка…</span></div>
+    </div>
     ${_refSectionHtml()}
     <p class="muted">Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).</p>
     ${rows}
@@ -382,6 +386,31 @@ function shareRef() {
     window.Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Сыграй со мной в «Вавилон»!')}`);
   } else {
     copyRefLink();
+  }
+}
+
+async function loadLeaderboard() {
+  const board = document.getElementById('lbBoard');
+  if (!board) return;
+  try {
+    const r = await fetch(`${CLOUD_URL}/leaderboard`);
+    if (!r.ok) { board.innerHTML = '<span class="muted">Нет данных</span>'; return; }
+    const list = await r.json();
+    if (!list.length) { board.innerHTML = '<span class="muted">Ещё никто не попал в зал славы</span>'; return; }
+    const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+    const myName = player.name || '';
+    board.innerHTML = `<table class="ref-table">
+      <thead><tr><th>#</th><th>Герой</th><th>Уровень</th><th>Опыт</th><th>Убийств</th></tr></thead>
+      <tbody>${list.map((row, i) => `<tr${row.name === myName ? ' class="self"' : ''}>
+        <td>${medal(i)}</td>
+        <td>${esc(row.name)}</td>
+        <td><b>${row.xpLevel}</b></td>
+        <td>${(row.xp || 0).toLocaleString()}</td>
+        <td>${row.kills || 0}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch (e) {
+    board.innerHTML = '<span class="muted">Ошибка загрузки</span>';
   }
 }
 
