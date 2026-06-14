@@ -74,6 +74,13 @@
     .bm{height:8px;background:#120d08;border-radius:3px;overflow:hidden;margin:2px 0 4px}
     .bm div{height:100%}
 
+    /* Tabs */
+    #tabs{display:none;gap:.4rem;padding:.5rem 1rem;background:var(--panel);border-bottom:1px solid var(--line)}
+    .tab-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+             padding:.35em 1.1em;font-size:.85rem;cursor:pointer;font-family:inherit;transition:all .15s}
+    .tab-btn:hover{color:var(--txt);border-color:var(--gold)}
+    .tab-btn.on{background:var(--panel2);color:var(--gold2);border-color:var(--gold)}
+
     /* Loading */
     #loading{display:none;text-align:center;padding:3rem;color:var(--muted)}
     .spin{display:inline-block;width:28px;height:28px;border:3px solid var(--line);
@@ -102,12 +109,18 @@
 
 <div id="summary" style="display:none"></div>
 
+<div id="tabs">
+  <button class="tab-btn on" onclick="switchTab('players')">👥 Игроки</button>
+  <button class="tab-btn" onclick="switchTab('referrals')">🤝 Рефералы</button>
+</div>
+
 <div id="toolbar" style="display:none">
   <input id="search" type="search" placeholder="🔎 Поиск по имени или ID" oninput="renderTable()">
   <span style="color:var(--muted);font-size:.8rem" id="tcount"></span>
 </div>
 
 <div id="dash" style="display:none"></div>
+<div id="ref-section" style="display:none"></div>
 
 <script>
 const WORKER = 'https://babylon-save.logist888.workers.dev';
@@ -115,6 +128,7 @@ let players = [];
 let sortKey = 'xp';
 let sortDir = -1;
 let adminKey = '';
+let currentTab = 'players';
 
 async function loadData() {
   adminKey = document.getElementById('keyInput').value.trim();
@@ -139,8 +153,10 @@ async function loadData() {
 async function refresh() {
   document.getElementById('loading').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
+  document.getElementById('tabs').style.display = 'none';
   document.getElementById('toolbar').style.display = 'none';
   document.getElementById('dash').style.display = 'none';
+  document.getElementById('ref-section').style.display = 'none';
   try {
     const r = await fetch(`${WORKER}/admin?key=${encodeURIComponent(adminKey)}`);
     if (!r.ok) throw new Error();
@@ -157,8 +173,64 @@ function renderAll() {
   document.getElementById('hsub').textContent = `— ${n} игрок${n===1?'':n<5?'а':'ов'}`;
   document.getElementById('hactions').style.display = 'flex';
   renderSummary();
-  document.getElementById('toolbar').style.display = 'flex';
-  renderTable();
+  document.getElementById('tabs').style.display = 'flex';
+  switchTab(currentTab);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('on', b.textContent.includes(tab === 'players' ? 'Игроки' : 'Рефералы'));
+  });
+  const isPlayers = tab === 'players';
+  document.getElementById('toolbar').style.display = isPlayers ? 'flex' : 'none';
+  document.getElementById('dash').style.display = isPlayers ? 'block' : 'none';
+  document.getElementById('ref-section').style.display = isPlayers ? 'none' : 'block';
+  if (isPlayers) renderTable();
+  else renderReferrals();
+}
+
+async function renderReferrals() {
+  const el = document.getElementById('ref-section');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)"><div class="spin"></div><br>Загрузка…</div>';
+  try {
+    const r = await fetch(`${WORKER}/referrals`);
+    if (!r.ok) throw new Error(`Ошибка ${r.status}`);
+    const list = await r.json();
+    if (!list.length) {
+      el.innerHTML = '<p style="padding:2rem;color:var(--muted);text-align:center">Рефералов пока нет</p>';
+      return;
+    }
+    const medal = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    // Общая сумма бонусов
+    const totalRefs = list.reduce((a,r) => a+(r.count||0), 0);
+    el.innerHTML = `
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;padding:.8rem 1rem">
+        <div class="sc"><div class="v">${list.length}</div><div class="l">Рефереров</div></div>
+        <div class="sc"><div class="v">${totalRefs}</div><div class="l">Всего приглашено</div></div>
+        <div class="sc"><div class="v">🪙 ${(totalRefs*200).toLocaleString()}</div><div class="l">Бонусов выдано</div></div>
+      </div>
+      <div style="padding:0 1rem 2rem;overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th style="width:42px">#</th>
+            <th>Игрок</th>
+            <th>Пригласил</th>
+            <th>Заработано</th>
+          </tr></thead>
+          <tbody>${list.map((row,i) => `
+            <tr>
+              <td class="rank">${medal(i)}</td>
+              <td><b>${esc(row.name||'—')}</b><br><span class="uid">ID ${row.userId}</span></td>
+              <td><b>${row.count}</b></td>
+              <td>🪙 ${(row.count*200).toLocaleString()}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<p style="padding:2rem;color:#f44336;text-align:center">Ошибка: ${esc(e.message)}</p>`;
+  }
 }
 
 function renderSummary() {
