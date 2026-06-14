@@ -262,7 +262,7 @@ function mobArt(name, opts) {
   return artFrame(`img/mobs/${artSlug(base)}`, mobArtSvg(name, opts), 'af-mob', ['jpg', 'png']);
 }
 function itemArt(it) { return artFrame(itemImgPath(it), itemArtSvg(it), 'af-item', ['jpg', 'png']); }
-function towerArt() { return artFrame('img/tower/banner', towerArtSvg(), 'af-bg', ['jpg', 'png']); }
+function towerArt() { return artFrame('img/tower/babylon_tower', towerArtSvg(), 'af-bg', ['png', 'jpg']); }
 // иконка здания башни: картинка (если есть) поверх эмодзи
 function buildingArt(name, emoji) {
   return artFrame(`img/tower/${artSlug(name)}`, `<span class="bemoji">${emoji}</span>`, 'af-build', ['jpg', 'png']);
