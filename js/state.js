@@ -6,7 +6,7 @@
 const SAVE_KEY = window.TG_USER ? `babylon_save_v1_${window.TG_USER.id}` : 'babylon_save_v1';
 
 // URL Cloudflare Worker — заменить после деплоя (см. babylon/worker/save-worker.js)
-const CLOUD_URL = 'https://babylon-save.YOUR_SUBDOMAIN.workers.dev';
+const CLOUD_URL = 'https://babylon-save.logist888.workers.dev';
 let _cloudTimer = null;
 let _itemId = Date.now();
 
