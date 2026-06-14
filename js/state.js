@@ -310,4 +310,15 @@ if (typeof document !== 'undefined') {
   } else {
     syncFromCloud();
   }
+
+  // Сохраняем в облако при сворачивании/закрытии (важно для Telegram Mini App)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && _cloudReady()) {
+      clearTimeout(_cloudTimer);
+      _pushToCloud();
+    }
+  });
+  window.addEventListener('beforeunload', () => {
+    if (_cloudReady()) _pushToCloud();
+  });
 }
