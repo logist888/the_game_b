@@ -3,6 +3,7 @@
  *
  * Env vars (Cloudflare dashboard → Worker → Settings → Variables):
  *   BOT_TOKEN  — токен бота из BotFather (секрет, не разглашать)
+ *   ADMIN_KEY  — произвольный секрет для защиты /admin (придумайте сами)
  *
  * KV namespace:
  *   SAVES — создать в dashboard и привязать к worker под именем SAVES
@@ -10,6 +11,7 @@
  * Маршруты:
  *   GET  /save?user_id=<id>          → возвращает JSON сохранения
  *   POST /save  body: {initData, save} → верифицирует подпись Telegram, записывает save
+ *   GET  /admin?key=<ADMIN_KEY>      → список всех игроков (только для админа)
  */
 
 const ALLOWED_ORIGIN = 'https://logist888.github.io';
@@ -114,6 +116,38 @@ export default {
       });
 
       return new Response('OK', { headers });
+    }
+
+    // --- GET /admin?key=ADMIN_KEY ---
+    if (url.pathname === '/admin' && request.method === 'GET') {
+      const key = url.searchParams.get('key');
+      if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) {
+        return new Response('Forbidden', { status: 403, headers });
+      }
+
+      const players = [];
+      let cursor;
+      do {
+        const listed = await env.SAVES.list({ prefix: 'save_', cursor });
+        const entries = await Promise.all(
+          listed.keys.map(async ({ name }) => {
+            const data = await env.SAVES.get(name, 'json');
+            return data ? { _userId: name.slice(5), ...data } : null;
+          })
+        );
+        players.push(...entries.filter(Boolean));
+        cursor = listed.list_complete ? undefined : listed.cursor;
+      } while (cursor);
+
+      players.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+
+      return new Response(JSON.stringify(players), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET',
+        },
+      });
     }
 
     return new Response('Not found', { status: 404, headers });
