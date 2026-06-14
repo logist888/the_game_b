@@ -264,7 +264,12 @@ async function syncFromCloud() {
     const r = await fetch(`${CLOUD_URL}/save?user_id=${TG_USER.id}`);
     if (!r.ok) return;
     const remote = await r.json();
-    if (!remote || typeof remote !== 'object') return;
+
+    if (!remote || typeof remote !== 'object') {
+      // Новый игрок — нет облачного сохранения. Пушим немедленно если есть реферал.
+      if (player.referredBy && !player.refRegistered) _pushToCloud();
+      return;
+    }
 
     // Extract server-injected meta fields before comparing saves
     const pendingBonus = remote._pendingBonus || 0;
