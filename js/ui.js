@@ -475,6 +475,32 @@ function lootHtml() {
   </div>`;
 }
 
+// ---------------- Приветственное окно для новых игроков ----------------
+function showWelcome() {
+  if (document.getElementById('welcome-overlay')) return;
+  const name = player.name ? `, ${esc(player.name)}` : '';
+  const div = document.createElement('div');
+  div.id = 'welcome-overlay';
+  div.className = 'welcome-overlay';
+  div.innerHTML = `
+    <div class="welcome-modal">
+      <div class="welcome-icon">🏯</div>
+      <h2>Добро пожаловать${name}!</h2>
+      <p>Ты — полубог, пробудившийся в недрах древней башни. Здесь сталкиваются порядок и хаос, боги и смертные.</p>
+      <p>Исследуй Вавилонскую башню, развивай героя, сражайся с монстрами и отправляйся в экспедиции за трофеями.</p>
+      <button class="big welcome-cta" onclick="dismissWelcome()">⚔️ Отправиться в путь!</button>
+    </div>`;
+  document.body.appendChild(div);
+}
+
+function dismissWelcome() {
+  const el = document.getElementById('welcome-overlay');
+  if (el) { el.classList.add('closing'); setTimeout(() => el.remove(), 300); }
+  player.welcomeSeen = true;
+  saveGame();
+  if (typeof _cloudReady === 'function' && _cloudReady()) _pushToCloud();
+}
+
 // всплывающий тост (используется при левел-апе)
 function showToast(msg) {
   let t = document.getElementById('toast');
@@ -486,4 +512,7 @@ function showToast(msg) {
 }
 
 // старт
-window.addEventListener('DOMContentLoaded', () => { recalc(); checkQuests(); render(); });
+window.addEventListener('DOMContentLoaded', () => {
+  recalc(); checkQuests(); render();
+  if (!player.welcomeSeen) showWelcome();
+});
