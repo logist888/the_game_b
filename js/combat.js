@@ -7,6 +7,7 @@
 const ZONES = ['голова', 'торс', 'левая рука', 'правая рука', 'ноги'];
 
 let combat = null; // активный бой или null
+let _turnInterval = null;
 
 function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
 function chance(p) { return Math.random() * 100 < p; }
@@ -37,21 +38,50 @@ function genMob(worldTier, name, difficulty) {
 
 // --- Старт боя ---
 function startCombat(mobs, ctx) {
+  clearTurnTimer();
   applyRegen();
+  const mobArr = Array.isArray(mobs) ? mobs : [mobs];
   combat = {
-    mobs: Array.isArray(mobs) ? mobs : [mobs],
+    mobs: mobArr,
     target: 0,
     round: 1,
-    ctx: ctx || {},      // { world, location, training }
-    pBuffs: [],          // эффекты на игроке
+    ctx: ctx || {},
+    pBuffs: [],
     pBlockZone: null,
     over: false,
     won: false,
+    castUsed: false,
+    turnSecs: mobArr.length > 1 ? 60 : 30,
+    turnTimeLeft: 0,
     logLines: [],
     loot: { gold: 0, sparks: 0, res: {}, items: [] },
   };
   clog(`⚔️ Бой начался: ${combat.mobs.map((m) => m.name).join(', ')}`);
+  startTurnTimer();
   return combat;
+}
+
+function startTurnTimer() {
+  clearTurnTimer();
+  if (!combat || combat.over) return;
+  combat.turnTimeLeft = combat.turnSecs;
+  _turnInterval = setInterval(() => {
+    if (!combat || combat.over) { clearTurnTimer(); return; }
+    combat.turnTimeLeft = Math.max(0, combat.turnTimeLeft - 1);
+    if (typeof renderCombat === 'function') renderCombat();
+    if (combat.turnTimeLeft <= 0) {
+      clearTurnTimer();
+      clog('⏰ Время хода истекло! Враги атакуют.');
+      finishRound();
+      if (combat && !combat.over) startTurnTimer();
+      if (typeof renderCombat === 'function') renderCombat();
+    }
+  }, 1000);
+}
+
+function clearTurnTimer() {
+  clearInterval(_turnInterval);
+  _turnInterval = null;
 }
 
 function clog(msg) { if (combat) combat.logLines.unshift(msg); }
@@ -64,6 +94,7 @@ function curMob() {
 // === Действия игрока. Каждое завершает раунд и вызывает ход мобов. ===
 function playerAttack(targetZone, blockZone) {
   if (combat.over) return;
+  clearTurnTimer();
   const mob = curMob();
   if (!mob) return;
   combat.pBlockZone = blockZone;
@@ -100,6 +131,9 @@ function playerAttack(targetZone, blockZone) {
 
 function playerCast(spellId, targetZone) {
   if (combat.over) return;
+  if (combat.castUsed) { clog('🧙 Уже применили заклинание в этот ход.'); if (typeof renderCombat === 'function') renderCombat(); return; }
+  clearTurnTimer();
+  combat.castUsed = true;
   const spell = SPELLS.find((s) => s.id === spellId);
   if (!spell) return;
   if (player.mp < spell.cost) { clog('💧 Недостаточно маны.'); return; }
@@ -146,6 +180,7 @@ function playerCast(spellId, targetZone) {
 
 function playerUseItem(itemId) {
   if (combat.over) return;
+  clearTurnTimer();
   const it = player.inventory.find((x) => x.id === itemId);
   if (!it || !it.use) return;
   const u = it.use;
@@ -163,6 +198,7 @@ function consumeItem(it) {
 
 function playerFlee() {
   if (combat.over) return;
+  clearTurnTimer();
   if (chance(40 + player.derived.agi)) { clog('🏃 Вы сбежали из боя.'); endCombat(false, true); }
   else { clog('Сбежать не удалось!'); finishRound(); }
 }
@@ -185,8 +221,10 @@ function finishRound() {
   if (combat.over) return;
   tickEffects();
   combat.round += 1;
+  combat.castUsed = false;
   player.hp = Math.round(player.hp); player.mp = Math.round(player.mp);
   checkEnd();
+  if (combat && !combat.over) startTurnTimer();
   saveGame();
 }
 
@@ -239,6 +277,7 @@ function checkEnd() {
 }
 
 function endCombat(won, fled) {
+  clearTurnTimer();
   combat.over = true;
   combat.won = won;
   if (fled) return;
