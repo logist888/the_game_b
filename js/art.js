@@ -237,12 +237,19 @@ function itemImgPath(it) {
 function artFrame(base, svg, cls, exts) {
   exts = exts || ['png', 'jpg'];
   const rest = exts.slice(1).join(',');
-  return `<span class="artframe ${cls || ''}">${svg}<img alt="" loading="lazy" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
+  // SVG скрыт по умолчанию; показывается только если все img-варианты не загрузились
+  return `<span class="artframe ${cls || ''}">${svg}<img alt="" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
 }
 function artImgFallback(img) {
   const rest = (img.dataset.exts || '').split(',').filter(Boolean);
-  if (rest.length) { img.dataset.exts = rest.slice(1).join(','); img.src = img.dataset.base + '.' + rest[0]; }
-  else img.remove();
+  if (rest.length) {
+    img.dataset.exts = rest.slice(1).join(',');
+    img.src = img.dataset.base + '.' + rest[0];
+  } else {
+    img.remove();
+    const frame = img.closest('.artframe');
+    if (frame) frame.classList.add('no-img');
+  }
 }
 
 // Публичные функции, которые вызывает ui.js (картинка с фолбэком на SVG).
