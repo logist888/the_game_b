@@ -68,7 +68,12 @@ function startTurnTimer() {
   _turnInterval = setInterval(() => {
     if (!combat || combat.over) { clearTurnTimer(); return; }
     combat.turnTimeLeft = Math.max(0, combat.turnTimeLeft - 1);
-    if (typeof renderCombat === 'function') renderCombat();
+    // Обновляем только элемент таймера, не перестраивая весь DOM
+    const timerEl = document.querySelector('.turn-timer');
+    if (timerEl) {
+      timerEl.textContent = `⏱ ${combat.turnTimeLeft} сек`;
+      timerEl.className = 'turn-timer' + (combat.turnTimeLeft <= 10 ? ' urgent' : '');
+    }
     if (combat.turnTimeLeft <= 0) {
       clearTurnTimer();
       clog('⏰ Время хода истекло! Враги атакуют.');
