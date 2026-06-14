@@ -56,6 +56,7 @@ function render() {
     if (b) head = buildingBanner(b);
   }
   $('main').innerHTML = head + (views[activeView] || viewTower)();
+  if (activeView === 'council') setTimeout(loadRefLeaderboard, 0);
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
@@ -330,10 +331,80 @@ function viewCouncil() {
     </div>`;
   }).join('');
   return `<div class="panel"><h2>📜 Совет старейшин</h2>
+    ${_refSectionHtml()}
     <p class="muted">Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).</p>
     ${rows}
     <button class="mini danger" onclick="if(confirm('Сбросить весь прогресс?')){resetGame();render();}">Начать заново</button>
   </div>`;
+}
+
+function _refSectionHtml() {
+  const userId = window.TG_USER && window.TG_USER.id;
+  const botHandle = window.BOT_HANDLE;
+  if (!userId || !botHandle || botHandle === 'YOUR_BOT_USERNAME') return '';
+  const refLink = `https://t.me/${botHandle}?start=ref_${userId}`;
+  const refCount = player.refCount || 0;
+  const earned = refCount * 200;
+  return `<div class="ref-box">
+    <h3>🤝 Реферальная программа</h3>
+    <p class="muted">Приглашайте друзей — за каждого нового игрока получайте <b>+200 🪙</b>. Новый игрок получает бонус <b>+500 🪙 и +100 🔥</b>.</p>
+    <div class="ref-stats">
+      <span>Приглашено: <b>${refCount}</b></span>
+      <span>Заработано: <b>${earned} 🪙</b></span>
+    </div>
+    <div class="ref-link-row">
+      <input class="ref-link-input" id="refLinkInput" readonly value="${esc(refLink)}">
+      <button class="mini" onclick="copyRefLink()">📋 Копировать</button>
+      <button class="mini" onclick="shareRef()">📤 Поделиться</button>
+    </div>
+    <div class="ref-board" id="refBoard"><span class="muted">⏳ Загрузка таблицы…</span></div>
+  </div>`;
+}
+
+function copyRefLink() {
+  const inp = document.getElementById('refLinkInput');
+  if (!inp) return;
+  inp.select();
+  try {
+    navigator.clipboard.writeText(inp.value).then(() => showToast('🔗 Ссылка скопирована!'));
+  } catch (e) {
+    try { document.execCommand('copy'); showToast('🔗 Ссылка скопирована!'); } catch (e2) {}
+  }
+}
+
+function shareRef() {
+  const inp = document.getElementById('refLinkInput');
+  if (!inp) return;
+  const link = inp.value;
+  if (navigator.share) {
+    navigator.share({ title: 'Проект «Вавилон»', text: 'Сыграй со мной в «Вавилон»!', url: link });
+  } else if (window.Telegram && window.Telegram.WebApp) {
+    window.Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent('Сыграй со мной в «Вавилон»!')}`);
+  } else {
+    copyRefLink();
+  }
+}
+
+async function loadRefLeaderboard() {
+  const board = document.getElementById('refBoard');
+  if (!board) return;
+  try {
+    const r = await fetch(`${CLOUD_URL}/referrals`);
+    if (!r.ok) { board.innerHTML = '<span class="muted">Нет данных</span>'; return; }
+    const list = await r.json();
+    if (!list.length) { board.innerHTML = '<span class="muted">Пока никто не приглашал игроков</span>'; return; }
+    const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+    board.innerHTML = `<table class="ref-table">
+      <thead><tr><th>#</th><th>Игрок</th><th>Приглашено</th></tr></thead>
+      <tbody>${list.map((row, i) => `<tr${String(row.userId) === String(window.TG_USER && window.TG_USER.id) ? ' class="self"' : ''}>
+        <td>${medal(i)}</td>
+        <td>${esc(row.name || row.userId)}</td>
+        <td><b>${row.count}</b></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch (e) {
+    board.innerHTML = '<span class="muted">Ошибка загрузки</span>';
+  }
 }
 
 // ---------------- Бой ----------------
