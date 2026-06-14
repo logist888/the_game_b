@@ -4,7 +4,7 @@
  *
  * TODO: замените имя бота (без @) для реферальных ссылок
  */
-window.BOT_HANDLE = 'YOUR_BOT_USERNAME'; // например: 'BabylonGameBot'
+window.BOT_HANDLE = 'babylongame_bot';
 
 (function () {
   const tg = window.Telegram && window.Telegram.WebApp;
