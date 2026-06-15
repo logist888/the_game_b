@@ -167,7 +167,7 @@ function gainXp(n) {
     addRes('sparks', reward);
     pushLog(`🎉 Новый уровень ${player.xpLevel}! Полное восстановление и +${reward} 🔥 искр.`);
     if (typeof showToast === 'function') showToast(`🎉 Уровень ${player.xpLevel}!`);
-    if (player.xpLevel % 5 === 0) _notifyLevelUp(player.xpLevel);
+    _notifyLevelUp(player.xpLevel);
     need = xpNeed(player.xpLevel);
   }
 }

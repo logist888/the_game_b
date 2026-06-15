@@ -10,6 +10,7 @@ let marketBusy = false;
 let clansList = [];
 let clansLoaded = false;
 let clanBusy = false;
+let arenaOpponents = []; // текущий список соперников арены (для индексного диспатча)
 let combatSel = { target: 0, atkZone: 'торс', blockZone: 'голова', spell: '' };
 
 const $ = (id) => document.getElementById(id);
@@ -249,23 +250,23 @@ function viewStairs() {
   </div>`;
 }
 
-function _oppCardHtml(opp) {
+function _oppCardHtml(opp, i) {
   return `<div class="pvp-card">
     <div class="pvp-card-info">
       <b>${esc(opp.name)}</b>${opp.isBot ? ' <span class="bot-tag">🤖</span>' : ''}
       <span class="muted">Уровень ${opp.xpLevel} · Опасность ${opp.danger}</span>
       <span class="muted">HP ${opp.maxHp} · Урон ${opp.dmgMin}–${opp.dmgMax} · Броня ${opp.armor}</span>
     </div>
-    <button class="mini" onclick="challengeOpponent(${JSON.stringify(JSON.stringify(opp))})">⚔️ Атаковать</button>
+    <button class="mini" onclick="challengeOpponent(${i})">⚔️ Атаковать</button>
   </div>`;
 }
 
 function viewArena() {
   const pvp = player.pvp || { wins: 0, losses: 0 };
   // Рендерим ботов синхронно сразу — никаких спиннеров, арена всегда заполнена
-  const initList = _mixOpponents([]);
-  const initHtml = initList.length
-    ? initList.map(_oppCardHtml).join('')
+  arenaOpponents = _mixOpponents([]);
+  const initHtml = arenaOpponents.length
+    ? arenaOpponents.map(_oppCardHtml).join('')
     : '<span class="muted">Соперники не найдены</span>';
   return `<div class="panel">
     <h2>⚔️ Арена</h2>
@@ -304,8 +305,9 @@ function _simulatePvp(opp) {
   return { won: myHp > 0 || oppHp <= 0, log: log.slice(-6) };
 }
 
-function challengeOpponent(dataJson) {
-  const opp = JSON.parse(dataJson);
+function challengeOpponent(idx) {
+  const opp = arenaOpponents[idx];
+  if (!opp) { showToast('Соперник недоступен'); return; }
   const { won, log } = _simulatePvp(opp);
 
   const goldReward = won ? Math.round(30 * (opp.danger || 1)) : -Math.round(10 * player.danger);
@@ -382,8 +384,8 @@ async function loadPvpOpponents() {
     if (!r.ok) return;
     const real = await r.json();
     if (!Array.isArray(real) || !real.length) return; // реальных нет — ботов не трогаем
-    const list = _mixOpponents(real);
-    if (list.length) el.innerHTML = list.map(_oppCardHtml).join('');
+    arenaOpponents = _mixOpponents(real);
+    if (arenaOpponents.length) el.innerHTML = arenaOpponents.map(_oppCardHtml).join('');
   } catch (e) { /* ботов уже показали — ничего не делаем */ }
 }
 
