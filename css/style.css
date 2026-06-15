@@ -175,11 +175,13 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .combat-title{background:#241a10; padding:.5em 1em; color:var(--gold2); font-weight:700; border-bottom:1px solid var(--line)}
 #combat-body{padding:1rem}
 .combat-hero{margin-bottom:.6em}
-.combat-mobs{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.5em}
-.mob{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5em; cursor:pointer}
+.combat-mobs{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:.5em}
+.mob{position:relative; min-width:0; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5em; cursor:pointer; text-align:center}
 .mob.sel{border-color:var(--gold)} .mob.dead{opacity:.35}
-.mname{font-weight:700; color:var(--gold2); font-size:.9rem}
-.mtags{font-size:.72rem; color:var(--muted); margin-top:.2em}
+.mob.boss{border-color:#c0392b; box-shadow:0 0 8px rgba(192,57,43,.5)}
+.boss-badge{font-size:.62rem; font-weight:700; color:#fff; background:#c0392b; border-radius:4px; padding:.05em .35em; display:inline-block; margin-bottom:.2em; letter-spacing:.02em}
+.mname{font-weight:700; color:var(--gold2); font-size:.9rem; overflow-wrap:anywhere; line-height:1.2}
+.mtags{font-size:.72rem; color:var(--muted); margin-top:.2em; overflow-wrap:anywhere}
 .combat-controls{margin:.6em 0; background:#1c150e; border:1px solid var(--line); border-radius:8px; padding:.5em}
 .cc-zones{display:flex; align-items:flex-end; gap:.4em; margin-bottom:.4em}
 .cc-field{display:flex; flex-direction:column; gap:2px; flex:1}
