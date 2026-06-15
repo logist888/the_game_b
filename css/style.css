@@ -266,3 +266,16 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
   .form-row label{width:auto}
   .kvgrid{grid-template-columns:1fr}
 }
+
+/* professions */
+.prof-list{font-size:.85rem}
+.prof-row{margin-bottom:.45rem}
+.prof-row .pname{font-size:.9rem}
+.prof-list .hint{margin-top:.4em}
+
+/* tavern */
+.tavern-stats{font-size:.82rem; margin:.3em 0 .6em}
+.tavern-result{background:var(--panel2); border:1px solid var(--gold); border-radius:8px;
+  padding:.5em .8em; margin:.5em 0; color:var(--gold2); font-weight:600}
+.tavern-row{display:flex; gap:.4em; flex-wrap:wrap; margin:.3em 0}
+.thimble-row{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin:.3em 0}

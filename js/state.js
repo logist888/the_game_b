@@ -14,8 +14,11 @@ function newPlayer(name) {
   const stats = {};
   // База: всё по 5 единиц; прогресс роста по геометрической прогрессии.
   STAT_ORDER.forEach((k) => { stats[k] = { val: 5, prog: 0, cap: 40 }; });
+  const professions = {};
+  PROF_ORDER.forEach((k) => { professions[k] = { lvl: 1, xp: 0 }; });
   return {
     name: name || (window.TG_USER && window.TG_USER.name) || 'Полубог',
+    professions,
     level: 1,
     danger: 1,            // «опасность» героя — влияет на силу мобов
     xp: 0,
@@ -105,6 +108,49 @@ function trainElement(el, dir, amount) {
   if (dir in player.dirs) player.dirs[dir] += amount;
 }
 
+// --- Профессии: опыт, уровни и открытие рецептов («тайные знания») ---
+function profLevel(key) {
+  const p = player.professions && player.professions[key];
+  return p ? p.lvl : 1;
+}
+// Опыт до следующего уровня профессии (плавный рост).
+function profNeed(lvl) { return 20 + (lvl - 1) * 15; }
+// Бонус качества изделия от мастерства мастерской (множитель к урону/броне).
+function profQuality(ws) { return 1 + (profLevel(ws) - 1) * 0.012; }
+
+function gainProfXp(key, amount) {
+  const p = player.professions[key];
+  if (!p || !amount) return;
+  p.xp += amount;
+  let need = profNeed(p.lvl);
+  while (p.xp >= need) {
+    p.xp -= need;
+    p.lvl += 1;
+    const info = PROFESSIONS[key];
+    pushLog(`📈 ${info.icon} ${info.name}: уровень ${p.lvl} (${profTitle(p.lvl)})!`);
+    if (typeof showToast === 'function') showToast(`${info.icon} ${info.name} ур. ${p.lvl}`);
+    _learnProfRecipes(key, p.lvl);
+    need = profNeed(p.lvl);
+  }
+}
+
+// Открыть рецепты, ставшие доступными на достигнутом уровне профессии.
+function _learnProfRecipes(key, lvl) {
+  const list = (typeof PROF_RECIPES !== 'undefined' && PROF_RECIPES[key]) || [];
+  list.forEach(([id, req]) => {
+    if (req <= lvl && !player.knownRecipes.includes(id)) {
+      player.knownRecipes.push(id);
+      const rec = RECIPES.find((x) => x.id === id);
+      pushLog(`📜 Тайное знание: изучен рецепт «${rec ? rec.name : id}»!`);
+    }
+  });
+}
+
+// При старте/загрузке выдаём все рецепты, положенные по текущим уровням.
+function syncProfRecipes() {
+  PROF_ORDER.forEach((k) => _learnProfRecipes(k, profLevel(k)));
+}
+
 // --- Классический уровень и опыт (видимая полоска) ---
 // Сколько опыта нужно, чтобы уйти с уровня lvl на следующий.
 function xpNeed(lvl) { return 100 + (lvl - 1) * 75; }
@@ -133,6 +179,8 @@ function recalc() {
   if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
   if (!player.counters) player.counters = { kills: player.kills || 0, gathered: player.gathered || 0, crafted: player.crafted || 0, expeditions: player.expeditions || 0, bossKills: 0 };
   if (player.counters.bossKills == null) player.counters.bossKills = 0;
+  if (!player.professions) player.professions = {};
+  PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
   const v = (k) => player.stats[k].val + equipBonus(k);
   const maxHp = 100 + v('end') * 5;
   const maxMp = 20 + v('int') * 5;
@@ -338,6 +386,7 @@ function _notifyLevelUp(level) {
 }
 
 recalc();
+syncProfRecipes();
 applyRegen();
 
 // Подтягиваем облачное сохранение после загрузки страницы

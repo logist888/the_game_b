@@ -59,8 +59,11 @@ function gather(res) {
   // удача и навык дают шанс добыть больше
   let qty = rnd(1, 3);
   if (chance(player.derived.luk)) qty += rnd(1, 2);
+  // мастерство собирателя добавляет к каждой добыче
+  qty += Math.floor((profLevel('gathering') - 1) / 3);
   addRes(res, qty);
   player.counters.gathered += qty;
+  gainProfXp('gathering', qty);
   pushLog(`⛏️ ${entry.name}: +${qty} ${RESOURCES[res].name}.`);
   if (typeof showToast === 'function') showToast(`+${qty} ${RESOURCES[res].icon} ${RESOURCES[res].name}`);
   checkQuests();
@@ -84,17 +87,27 @@ function craft(recipeId) {
     if (hasRes('coal', r.fuel)) { spendRes('coal', r.fuel); quality = 1.15; } // уголь = выше температура/качество
     else { spendRes('log', r.fuel * 6); quality = 1.0; }
   }
+  // мастерство профессии повышает качество изделия (раздел GDD «Профессии»)
+  const mastery = profQuality(r.ws);
+  quality *= mastery;
   if (r.out.res) {
-    addRes(r.out.res, r.out.qty || 1);
-    pushLog(`🔧 Создано: ${r.out.qty || 1}× ${RESOURCES[r.out.res].name}.`);
+    let qty = r.out.qty || 1;
+    // мастер-плавильщик/столяр изредка получает лишнюю единицу ресурса
+    if (chance((profLevel(r.ws) - 1) * 3)) qty += 1;
+    addRes(r.out.res, qty);
+    pushLog(`🔧 Создано: ${qty}× ${RESOURCES[r.out.res].name}.`);
   } else if (r.out.item) {
     const item = JSON.parse(JSON.stringify(r.out.item));
     if (item.armor) item.armor = Math.round(item.armor * quality);
     if (item.dmg) item.dmg = item.dmg.map((d) => Math.round(d * quality));
     item.durability = [1000, 1000];
     addItem(item);
-    pushLog(`🔧 Создан предмет: ${item.name}${quality > 1 ? ' (закал. углём)' : ''}.`);
+    const tags = [quality >= 1.15 ? 'закал. углём' : '', mastery > 1.05 ? `мастерство ×${mastery.toFixed(2)}` : ''].filter(Boolean).join(', ');
+    pushLog(`🔧 Создан предмет: ${item.name}${tags ? ` (${tags})` : ''}.`);
   }
+  // опыт профессии: ресурсы +2, снаряжение +5, легендарное +20
+  const legendary = (r.sparks || 0) >= 300;
+  gainProfXp(r.ws, r.out.res ? 2 : legendary ? 20 : 5);
   player.counters.crafted += 1;
   checkQuests();
   render();
@@ -161,6 +174,67 @@ function exchangeSouls(kind) {
   spendRes('souls', 1);
   if (kind === 'gold') { addRes('gold', 1000); pushLog('🏛️ 1 Душа → 1000 Золота.'); }
   else { addRes('sparks', 1000); pushLog('🏛️ 1 Душа → 1000 Искр.'); }
+  render();
+}
+
+// --- Таверна: азартные игры на золото (раздел GDD «Таверна») ---
+// Результат последней игры для отрисовки в панели.
+let tavernResult = '';
+
+function _tavernEnsure() { if (!player.counters.tavern) player.counters.tavern = { plays: 0, won: 0, lost: 0 }; }
+function _tavernBank(delta) {
+  _tavernEnsure();
+  player.counters.tavern.plays += 1;
+  if (delta > 0) player.counters.tavern.won += delta;
+  else player.counters.tavern.lost += -delta;
+}
+
+// Кости: ставка, 2d6 игрока против 2d6 заведения. Больше — выигрыш ×2, ничья — возврат.
+function playDice(bet) {
+  if (!hasRes('gold', bet)) { tavernResult = '🪙 Недостаточно золота для ставки.'; render(); return; }
+  spendRes('gold', bet);
+  const me = rnd(1, 6) + rnd(1, 6);
+  const house = rnd(1, 6) + rnd(1, 6);
+  let net;
+  if (me > house) { addRes('gold', bet * 2); net = bet; tavernResult = `🎲 Ты ${me} против ${house} — победа! +${bet} 🪙`; }
+  else if (me === house) { addRes('gold', bet); net = 0; tavernResult = `🎲 Ничья ${me}:${house} — ставка возвращена.`; }
+  else { net = -bet; tavernResult = `🎲 Ты ${me} против ${house} — проигрыш. −${bet} 🪙`; }
+  _tavernBank(net);
+  pushLog(tavernResult);
+  checkQuests();
+  render();
+}
+
+// Напёрстки: выбери 1 из 3, шарик под случайным. Угадал — выигрыш ×3.
+function playThimbles(pick, bet) {
+  if (!hasRes('gold', bet)) { tavernResult = '🪙 Недостаточно золота для ставки.'; render(); return; }
+  spendRes('gold', bet);
+  const ball = rnd(0, 2);
+  let net;
+  if (pick === ball) { addRes('gold', bet * 3); net = bet * 2; tavernResult = `🥤 Шарик под №${ball + 1} — угадал! +${bet * 2} 🪙`; }
+  else { net = -bet; tavernResult = `🥤 Шарик был под №${ball + 1}, ты выбрал №${pick + 1}. −${bet} 🪙`; }
+  _tavernBank(net);
+  pushLog(tavernResult);
+  checkQuests();
+  render();
+}
+
+// Лотерея: билет за фикс. цену, взвешенная таблица призов (вкл. редкую Душу).
+const LOTTERY_PRICE = 50;
+function playLottery() {
+  if (!hasRes('gold', LOTTERY_PRICE)) { tavernResult = `🪙 Билет стоит ${LOTTERY_PRICE} золота.`; render(); return; }
+  spendRes('gold', LOTTERY_PRICE);
+  const roll = Math.random() * 100;
+  let net = -LOTTERY_PRICE;
+  if (roll < 55) { tavernResult = '🎟️ Пусто. Удача отвернулась.'; }
+  else if (roll < 80) { addRes('gold', 50); net += 50; tavernResult = '🎟️ Мелкий выигрыш: +50 🪙'; }
+  else if (roll < 94) { addRes('gold', 150); net += 150; tavernResult = '🎟️ Неплохо: +150 🪙'; }
+  else if (roll < 98.5) { addRes('sparks', 200); tavernResult = '🎟️ Джекпот искр: +200 🔥'; }
+  else { addRes('souls', 1); tavernResult = '🎟️ 💎 СУПЕРПРИЗ: +1 Душа!'; }
+  _tavernBank(net);
+  pushLog(tavernResult);
+  if (typeof showToast === 'function') showToast(tavernResult);
+  checkQuests();
   render();
 }
 

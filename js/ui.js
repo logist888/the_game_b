@@ -46,7 +46,7 @@ function render() {
   const views = {
     tower: viewTower, stats: viewStats, stairs: viewStairs, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
-    bank: viewBank, council: viewCouncil,
+    tavern: viewTavern, bank: viewBank, council: viewCouncil,
   };
   // баннер с артом здания над страницей (кроме башни и лестницы — у них свои баннеры)
   const noBanner = ['tower', 'stairs'];
@@ -149,6 +149,7 @@ function viewStats() {
       <div class="col">
         <h3>Боевые параметры</h3><div class="kvgrid">${derivedRows}</div>
         <h3>Магия</h3>${viewMagicMini()}
+        <h3>Профессии</h3>${viewProfessions()}
         <h3>Экипировка</h3>${equipHtml}
       </div>
     </div>
@@ -166,6 +167,22 @@ function viewMagicMini() {
   }).join('');
   return `<div class="magic-mini"><div class="muted">Стихии: ${els}</div><div class="muted">Направления: ${dirs}</div>
     <ul class="spell-list">${spells}</ul></div>`;
+}
+
+function viewProfessions() {
+  const rows = PROF_ORDER.map((k) => {
+    const p = player.professions[k];
+    const info = PROFESSIONS[k];
+    const need = profNeed(p.lvl);
+    const pct = (p.xp / need) * 100;
+    return `<div class="prof-row">
+      <div class="pname">${info.icon} ${info.name} <b>ур. ${p.lvl}</b> <span class="tag">${profTitle(p.lvl)}</span></div>
+      <div class="bar tiny"><div class="fill" style="width:${pct}%"></div><span>${Math.round(p.xp)}/${need}</span></div>
+      <div class="sdesc"><i>${info.grows}</i></div>
+    </div>`;
+  }).join('');
+  return `<div class="prof-list">${rows}
+    <div class="muted hint">Мастерство повышает качество изделий и открывает «тайные знания» — новые рецепты в мастерских.</div></div>`;
 }
 
 function itemCard(it) {
@@ -353,11 +370,18 @@ function recipeCard(r) {
   const known = player.knownRecipes.includes(r.id);
   const out = r.out.res ? `${r.out.qty || 1}× ${RESOURCES[r.out.res].name}` : r.out.item.name;
   const ok = canCraft(r) && known;
+  // подсказка, как открыть неизученный рецепт (профессия+уровень или босс)
+  let lockHint = 'рецепт не изучен';
+  if (!known) {
+    const entry = (PROF_RECIPES[r.ws] || []).find(([id]) => id === r.id);
+    if (entry) lockHint = `откроется: ${PROFESSIONS[r.ws].icon} ${PROFESSIONS[r.ws].name} ур. ${entry[1]}`;
+    else if ((r.sparks || 0) >= 300) lockHint = '🐲 схема — трофей с боссов (миры 7+)';
+  }
   return `<div class="recipe ${ok ? '' : 'locked'}">
     <div class="rc-out"><b>${esc(out)}</b> <span class="ws">[${WORKSHOPS[r.ws]}]</span></div>
     <div class="rc-in">${ins}${extra ? ' · ' + extra : ''}</div>
     ${known ? `<button class="mini" ${ok ? '' : 'disabled'} onclick="craft('${r.id}')">создать</button>`
-            : '<span class="muted">рецепт не изучен</span>'}
+            : `<span class="muted">${lockHint}</span>`}
   </div>`;
 }
 function viewWorkshops() {
@@ -434,6 +458,34 @@ function viewAcademy() {
     <h3>Исследование мира</h3>
     <p class="muted">Посещено локаций: <b>${visited}</b> · Убито мобов: <b>${player.counters.kills}</b> · Создано вещей: <b>${player.counters.crafted}</b>.</p>
     ${worlds}
+  </div>`;
+}
+function viewTavern() {
+  const gold = player.resources.gold || 0;
+  const t = (player.counters && player.counters.tavern) || { plays: 0, won: 0, lost: 0 };
+  const bets = [10, 50, 100];
+  const diceBtns = bets.map((b) => `<button class="mini" ${gold >= b ? '' : 'disabled'} onclick="playDice(${b})">ставка ${b} 🪙</button>`).join('');
+  const thimbleRows = [10, 50].map((b) => `<div class="thimble-row">
+    <span class="muted">ставка ${b} 🪙:</span>
+    ${[0, 1, 2].map((i) => `<button class="mini" ${gold >= b ? '' : 'disabled'} onclick="playThimbles(${i},${b})">🥤 №${i + 1}</button>`).join('')}
+  </div>`).join('');
+  return `<div class="panel">
+    <h2>🍺 Таверна</h2>
+    <p class="muted">Хлеба и зрелищ! Азартные игры на золото. Дом всегда немного в выигрыше — играй с умом.</p>
+    <div class="tavern-stats muted">Сыграно: <b>${t.plays}</b> · Выиграно: <b>${t.won}</b> 🪙 · Проиграно: <b>${t.lost}</b> 🪙</div>
+    ${tavernResult ? `<div class="tavern-result">${esc(tavernResult)}</div>` : ''}
+
+    <h3>🎲 Кости</h3>
+    <p class="muted">Твои 2 кубика против заведения. Больше — выигрыш ×2, ничья — возврат ставки.</p>
+    <div class="tavern-row">${diceBtns}</div>
+
+    <h3>🥤 Напёрстки</h3>
+    <p class="muted">Угадай, под каким стаканом шарик. Угадал — выигрыш ×3.</p>
+    ${thimbleRows}
+
+    <h3>🎟️ Лотерея</h3>
+    <p class="muted">Билет за ${LOTTERY_PRICE} 🪙. Призы: золото, искры и — очень редко — Душа!</p>
+    <button class="big" ${gold >= LOTTERY_PRICE ? '' : 'disabled'} onclick="playLottery()">Купить билет (${LOTTERY_PRICE} 🪙)</button>
   </div>`;
 }
 function viewBank() {
