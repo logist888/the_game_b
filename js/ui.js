@@ -639,7 +639,7 @@ function viewMarket() {
 }
 
 // ---------------- Кланы ----------------
-const CLAN_CREATE_COST = 5000;
+const CLAN_CREATE_COST = 1000;
 
 async function loadClansView() {
   if (!_marketOnline()) return;
