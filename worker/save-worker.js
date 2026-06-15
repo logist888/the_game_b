@@ -508,6 +508,128 @@ export default {
       return new Response(JSON.stringify({ ok: true, lot }), { headers: { ...headers, 'Content-Type': 'application/json' } });
     }
 
+    // ==================== КЛАНЫ (раздел GDD «кланы / семьи») ====================
+    // Клан хранит только список memberIds + казну; имена/уровни подтягиваются
+    // из сохранений участников при чтении (живые данные, как на арене).
+
+    const CLAN_MAX_MEMBERS = 20;
+    const jsonResp = (obj, status = 200) =>
+      new Response(JSON.stringify(obj), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+    const loadAllClans = async () => {
+      const clans = [];
+      let cursor;
+      do {
+        const listed = await env.SAVES.list({ prefix: 'clan_', cursor });
+        const entries = await Promise.all(listed.keys.map(({ name }) => env.SAVES.get(name, 'json')));
+        clans.push(...entries.filter(Boolean));
+        cursor = listed.list_complete ? undefined : listed.cursor;
+      } while (cursor);
+      return clans;
+    };
+
+    // --- GET /clans --- список кланов (рейтинг по числу участников) ---
+    if (url.pathname === '/clans' && request.method === 'GET') {
+      const clans = await loadAllClans();
+      const summary = clans.map((c) => ({
+        id: c.id, name: c.name, tag: c.tag || '', leaderName: c.leaderName,
+        size: (c.memberIds || []).length, treasury: c.treasury || 0,
+      })).sort((a, b) => b.size - a.size || b.treasury - a.treasury);
+      return jsonResp(summary);
+    }
+
+    // --- GET /clan?user_id=<id> --- клан игрока с живым составом ---
+    if (url.pathname === '/clan' && request.method === 'GET') {
+      const userId = url.searchParams.get('user_id');
+      if (!userId) return jsonResp(null);
+      const clanId = await env.SAVES.get(`clanmember_${userId}`, 'json');
+      if (!clanId) return jsonResp(null);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) { await env.SAVES.delete(`clanmember_${userId}`); return jsonResp(null); }
+      const members = await Promise.all((clan.memberIds || []).map(async (mid) => {
+        const s = await env.SAVES.get(`save_${mid}`, 'json');
+        return { id: mid, name: (s && s.name) || 'Полубог', xpLevel: (s && s.xpLevel) || 1, danger: (s && s.danger) || 1, isLeader: String(mid) === String(clan.leaderId) };
+      }));
+      members.sort((a, b) => b.isLeader - a.isLeader || b.danger - a.danger);
+      return jsonResp({ id: clan.id, name: clan.name, tag: clan.tag || '', leaderId: clan.leaderId, leaderName: clan.leaderName, treasury: clan.treasury || 0, createdAt: clan.createdAt, size: members.length, members });
+    }
+
+    // --- POST /clan/create  body: { initData, name, tag } ---
+    if (url.pathname === '/clan/create' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      if (await env.SAVES.get(`clanmember_${user.id}`, 'json')) return jsonResp({ error: 'already' }, 409);
+      const name = String(body.name || '').trim().slice(0, 24);
+      const tag = String(body.tag || '').trim().slice(0, 5);
+      if (name.length < 3) return jsonResp({ error: 'name' }, 400);
+      const id = crypto.randomUUID();
+      const clan = { id, name, tag, leaderId: String(user.id), leaderName: user.name, memberIds: [String(user.id)], treasury: 0, createdAt: Date.now() };
+      await env.SAVES.put(`clan_${id}`, JSON.stringify(clan));
+      await env.SAVES.put(`clanmember_${user.id}`, JSON.stringify(id));
+      return jsonResp({ ok: true, id });
+    }
+
+    // --- POST /clan/join  body: { initData, clanId } ---
+    if (url.pathname === '/clan/join' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      if (await env.SAVES.get(`clanmember_${user.id}`, 'json')) return jsonResp({ error: 'already' }, 409);
+      const clan = await env.SAVES.get(`clan_${body.clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if ((clan.memberIds || []).length >= CLAN_MAX_MEMBERS) return jsonResp({ error: 'full' }, 429);
+      clan.memberIds.push(String(user.id));
+      await env.SAVES.put(`clan_${clan.id}`, JSON.stringify(clan));
+      await env.SAVES.put(`clanmember_${user.id}`, JSON.stringify(clan.id));
+      if (env.BOT_TOKEN && env.BOT_HANDLE && String(clan.leaderId) !== String(user.id)) {
+        await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, clan.leaderId,
+          `🛡 <b>Пополнение в клане!</b>\n${user.name} вступил в клан «${clan.name}».`);
+      }
+      return jsonResp({ ok: true, id: clan.id });
+    }
+
+    // --- POST /clan/leave  body: { initData } ---
+    if (url.pathname === '/clan/leave' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      await env.SAVES.delete(`clanmember_${user.id}`);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (clan) {
+        clan.memberIds = (clan.memberIds || []).filter((m) => String(m) !== String(user.id));
+        if (clan.memberIds.length === 0) {
+          await env.SAVES.delete(`clan_${clanId}`); // клан распался
+        } else {
+          if (String(clan.leaderId) === String(user.id)) { // лидер ушёл — передаём старшинство
+            clan.leaderId = clan.memberIds[0];
+            const s = await env.SAVES.get(`save_${clan.leaderId}`, 'json');
+            clan.leaderName = (s && s.name) || 'Полубог';
+          }
+          await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+        }
+      }
+      return jsonResp({ ok: true });
+    }
+
+    // --- POST /clan/donate  body: { initData, amount } --- взнос в казну ---
+    if (url.pathname === '/clan/donate' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const amount = Math.floor(Number(body.amount));
+      if (!(amount > 0)) return jsonResp({ error: 'amount' }, 400);
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      clan.treasury = (clan.treasury || 0) + amount;
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, treasury: clan.treasury });
+    }
+
     // --- GET /admin?key=ADMIN_KEY ---
     if (url.pathname === '/admin' && request.method === 'GET') {
       const key = url.searchParams.get('key');
