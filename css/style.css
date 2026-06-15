@@ -139,6 +139,8 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .res-chip{background:#1c150e; border:1px solid var(--line); border-radius:6px; padding:.2em .5em}
 .gather-grid{display:flex; flex-wrap:wrap; gap:.4em}
 .shop-row{display:grid; grid-template-columns:1fr auto auto auto auto; gap:.5em; align-items:center; padding:.25em 0; border-bottom:1px dashed #2a2016; font-size:.88rem}
+.shop-row.gear{grid-template-columns:1fr auto auto}
+.shop-sub{margin:.5em 0 .2em; color:var(--gold2); font-size:.92rem}
 .recipe-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.6rem}
 .recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem}
 .recipe.locked{opacity:.7}
