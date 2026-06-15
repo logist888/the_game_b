@@ -23,6 +23,9 @@ function questProgressValue(q) {
     case 'craft': return player.counters.crafted;
     case 'gold': return player.resources.gold || 0;
     case 'locations': return player.visitedLocations.length;
+    case 'pvp': return player.pvp ? player.pvp.wins : 0;
+    case 'boss': return player.counters.bossKills || 0;
+    case 'spells': return player.spells.length;
     default: return 0;
   }
 }

@@ -14,9 +14,11 @@ function chance(p) { return Math.random() * 100 < p; }
 
 // --- Генерация моба из мира/имени ---
 function genMob(worldTier, name, difficulty) {
-  const isBoss = BOSS_WORDS.some((w) => name.includes(w));
-  const isCaster = CASTER_WORDS.some((w) => name.includes(w));
-  const isRanged = RANGED_WORDS.some((w) => name.includes(w));
+  // сравнение регистронезависимое: в названиях «дракон» со строчной буквы
+  const lname = name.toLowerCase();
+  const isBoss = BOSS_WORDS.some((w) => lname.includes(w.toLowerCase()));
+  const isCaster = CASTER_WORDS.some((w) => lname.includes(w.toLowerCase()));
+  const isRanged = RANGED_WORDS.some((w) => lname.includes(w.toLowerCase()));
   const diffMult = difficulty / 100; // 0.75 .. 2.0
   const base = 6 + worldTier * 4;
   const bossMult = isBoss ? 2.2 : 1;
@@ -289,6 +291,11 @@ function endCombat(won, fled) {
   if (won) {
     rollLoot();
     player.counters.kills += combat.mobs.length;
+    const bossCount = combat.mobs.filter((m) => m.isBoss).length;
+    if (bossCount > 0) {
+      if (!player.counters.bossKills) player.counters.bossKills = 0;
+      player.counters.bossKills += bossCount;
+    }
     pushLog(`🏆 Победа над: ${combat.mobs.map((m) => m.name).join(', ')}.`);
   } else {
     player.hp = Math.round(player.maxHp * 0.3); // не умираем насовсем — теряем часть добра
@@ -312,8 +319,10 @@ function rollLoot() {
   const xp = combat.mobs.reduce((a, m) => a + (10 + (m.worldTier || 1) * 5) * (m.isBoss ? 3 : 1), 0);
   combat.loot.xp = xp;
   gainXp(xp);
-  // ресурсы-трофеи (с учётом удачи)
-  const pool = ['thinHide','thickHide','bone','herb','mushroom','ore','stone','gem','mica','sand'];
+  // ресурсы-трофеи (с учётом удачи); миры 7+ дают ресурсы 3 уровня
+  const tier3Pool = ['dragonScale','soulGem','starCrystal','hellSteel','arcaneEssence'];
+  const basePool = ['thinHide','thickHide','bone','herb','mushroom','ore','stone','gem','mica','sand'];
+  const pool = tier >= 7 ? [...tier3Pool, ...basePool] : basePool;
   const drops = 1 + Math.floor(player.derived.lootBonus / 50) + bosses;
   for (let i = 0; i < drops + tier; i++) {
     const r = pool[rnd(0, pool.length - 1)];
@@ -321,10 +330,22 @@ function rollLoot() {
     addRes(r, q);
     combat.loot.res[r] = (combat.loot.res[r] || 0) + q;
   }
-  // изредка — эскиз/рецепт (формула заклинания → новое заклинание)
+  // изредка — формула нового заклинания
   if (chance(8 + player.derived.lootBonus / 10)) {
     const unknown = SPELLS.filter((s) => !player.spells.includes(s.id));
     if (unknown.length) { const s = unknown[rnd(0, unknown.length - 1)]; player.spells.push(s.id); combat.loot.spell = s.name; clog(`📜 Получена формула заклинания «${s.name}»!`); }
+  }
+  // с боссов в мирах 7+ — схемы легендарного снаряжения
+  const legendIds = ['rune_blade','necro_staff','star_bow','hell_maul','dragon_armor','arcane_robe','shadow_helm','star_amulet','dragon_ring','hell_earring'];
+  if (tier >= 7 && bosses > 0 && chance(20 + player.derived.lootBonus / 10)) {
+    const unknownLeg = legendIds.filter((id) => !player.knownRecipes.includes(id));
+    if (unknownLeg.length) {
+      const id = unknownLeg[rnd(0, unknownLeg.length - 1)];
+      player.knownRecipes.push(id);
+      const rec = RECIPES.find((x) => x.id === id);
+      combat.loot.recipe = rec ? rec.name : id;
+      clog(`📜 Схема легендарного предмета «${rec ? rec.name : id}» получена!`);
+    }
   }
 }
 

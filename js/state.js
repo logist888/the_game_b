@@ -35,7 +35,7 @@ function newPlayer(name) {
     // прогресс квестов
     quests: {},
     visitedLocations: [],
-    counters: { kills:0, gathered:0, crafted:0, expeditions:0 },
+    counters: { kills:0, gathered:0, crafted:0, expeditions:0, bossKills:0 },
     lastTick: Date.now(),
     log: [],
     refCount: 0,
@@ -131,6 +131,8 @@ function recalc() {
   if (player.xp == null) player.xp = 0;
   if (player.welcomeSeen == null) player.welcomeSeen = true; // старые игроки не видят приветствие
   if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
+  if (!player.counters) player.counters = { kills: player.kills || 0, gathered: player.gathered || 0, crafted: player.crafted || 0, expeditions: player.expeditions || 0, bossKills: 0 };
+  if (player.counters.bossKills == null) player.counters.bossKills = 0;
   const v = (k) => player.stats[k].val + equipBonus(k);
   const maxHp = 100 + v('end') * 5;
   const maxMp = 20 + v('int') * 5;

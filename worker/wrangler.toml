@@ -1,0 +1,27 @@
+name = "babylon-save"
+main = "save-worker.js"
+compatibility_date = "2024-11-01"
+
+# KV-хранилище сохранений. ID берётся из Cloudflare dashboard:
+#   Workers & Pages → KV → создать namespace "SAVES" → скопировать ID сюда.
+# Либо одной командой:
+#   npx wrangler kv namespace create SAVES
+# и подставить выданный id.
+kv_namespaces = [
+  { binding = "SAVES", id = "PUT_YOUR_KV_NAMESPACE_ID_HERE" }
+]
+
+# Cron-триггер: каждые 10 минут проверяет HP-уведомления (handler scheduled()).
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Переменные окружения (НЕ секретные) можно держать здесь.
+# BOT_HANDLE — username бота без @.
+[vars]
+BOT_HANDLE = "babylongame_bot"
+
+# Секреты (BOT_TOKEN, ADMIN_KEY) НЕ хранятся в этом файле.
+# Задаются один раз командами:
+#   npx wrangler secret put BOT_TOKEN
+#   npx wrangler secret put ADMIN_KEY
+# либо в dashboard → Worker → Settings → Variables and Secrets.

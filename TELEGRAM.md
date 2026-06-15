@@ -40,15 +40,37 @@ https://logist888.github.io/the_game_b/
 4. Открой своего бота в Telegram, нажми кнопку **«Играть»** (или ссылку Mini App) —
    «Вавилон» откроется на весь экран прямо в Telegram.
 
+## Шаг 3. Облачные сохранения (Cloudflare Worker)
+
+Чтобы прогресс был **серверным** (привязан к Telegram-аккаунту, переживает смену
+устройства и очистку кэша) и работали реферальная программа, зал славы, PvP и
+уведомления — разверни воркер. Полная инструкция: [`worker/README.md`](worker/README.md).
+
+Кратко (через CLI):
+
+```bash
+cd babylon/worker
+npx wrangler login                    # или export CLOUDFLARE_API_TOKEN=...
+npx wrangler kv namespace create SAVES   # id вписать в wrangler.toml
+npx wrangler secret put BOT_TOKEN     # токен бота
+npx wrangler secret put ADMIN_KEY     # пароль для /admin
+npx wrangler deploy
+```
+
+Адрес воркера должен совпадать с константой `CLOUD_URL` в `js/state.js`
+(сейчас `https://babylon-save.logist888.workers.dev`).
+
 ## Обновления
 
 Любой пуш в ветку (или нажатие **Run workflow** в Actions) пере-публикует игру.
 В Telegram достаточно переоткрыть Mini App (можно очистить кэш: в меню Mini App
-есть «Reload»).
+есть «Reload»). При изменении `worker/save-worker.js` — повторить `wrangler deploy`.
 
 ## Заметки
 
-- Прогресс сохраняется в `localStorage` Telegram-вебвью (на этом устройстве).
+- **Сохранение двухуровневое**: мгновенно в `localStorage` + в облако (Cloudflare
+  KV) при сворачивании/закрытии и раз в ~30 с. Вне Telegram облако не используется —
+  работает только локальное сохранение.
 - Сложность 75–200% и вся механика работают так же, как в браузере.
-- Если нужен ввод данных пользователя Telegram (имя игрока из аккаунта, платежи
-  Stars и т.п.) — это можно добавить позже через тот же WebApp SDK.
+- Подпись `initData` проверяется на сервере (HMAC-SHA256) — чужое сохранение
+  подделать нельзя.

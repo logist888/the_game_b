@@ -54,6 +54,19 @@ const SPELLS = [
     desc:'Враг проваливается в яму и пропускает раунд (шанс).', eff:{ stun:0.5, rounds:1 } },
   { id:'quake',      name:'Землетрясение', element:'земля', dir:'сумрак', cost:10, kind:'damage',
     desc:'Сотрясает поле боя, нанося урон всем целям.', eff:{ dmg:12, aoe:true } },
+  // --- Продвинутые заклинания (открываются с боссов в мирах 7+) ---
+  { id:'heal_wave',        name:'Волна исцеления',   element:'вода',  dir:'свет',   cost:15, kind:'heal',
+    desc:'Мощная волна восстанавливает 40 HP.', eff:{ heal:40 } },
+  { id:'chain_lightning',  name:'Цепная молния',     element:'ветер', dir:'сумрак', cost:25, kind:'damage',
+    desc:'Молния бьёт по всем врагам: −15 HP каждому.', eff:{ dmg:15, aoe:true } },
+  { id:'inferno',          name:'Инферно',           element:'огонь', dir:'тьма',   cost:30, kind:'damage',
+    desc:'Адское пламя испепеляет цель: −30 HP.', eff:{ dmg:30 } },
+  { id:'stone_skin',       name:'Каменная кожа',     element:'земля', dir:'свет',   cost:10, kind:'buff',
+    desc:'Кожа твердеет как камень: +40 защиты на 3 раунда.', eff:{ defBuff:40, rounds:3 } },
+  { id:'soul_drain',       name:'Высасывание души',  element:'вода',  dir:'тьма',   cost:20, kind:'damage',
+    desc:'Крадёт жизнь врага: −20 HP врагу, +10 HP вам.', eff:{ dmg:20, heal:10 } },
+  { id:'meteor',           name:'Метеор',            element:'земля', dir:'тьма',   cost:40, kind:'damage',
+    desc:'Падающий метеор сокрушает цель: −50 HP.', eff:{ dmg:50 } },
 ];
 
 // ----------------------------------------------------------------------------
@@ -177,6 +190,12 @@ const RESOURCES = {
   cloth:   { name:'Кусок ткани',      tier:2, icon:'🧶' },
   leather: { name:'Кусок кожи',       tier:2, icon:'🟤' },
   metal:   { name:'Металл',           tier:2, icon:'🔩' },
+  // 3 уровень — выпадают с боссов в мирах 7+
+  dragonScale:   { name:'Чешуя дракона',       tier:3, icon:'🐲' },
+  soulGem:       { name:'Камень душ',           tier:3, icon:'🔮' },
+  starCrystal:   { name:'Звёздный кристалл',    tier:3, icon:'🌟' },
+  hellSteel:     { name:'Адская сталь',         tier:3, icon:'🔴' },
+  arcaneEssence: { name:'Магическая эссенция',  tier:3, icon:'✴️' },
   // особые
   gold:    { name:'Золото',           tier:0, icon:'🪙', special:true },
   souls:   { name:'Души',             tier:0, icon:'👻', special:true },
@@ -248,6 +267,32 @@ const RECIPES = [
   { id:'earring',ws:'jewelry', name:'Серьги удачи', sparks:90, in:{gem:2},
     out:{ item:{ name:'Серьги удачи', slot:'earring', type:'бижутерия', weight:0, bonus:{ luk:4 } } } },
 
+  // --- ЛЕГЕНДАРНОЕ ОРУЖИЕ (требует ресурсы 3 уровня) ---
+  { id:'rune_blade',  ws:'smithy',    name:'Рунный клинок',    sparks:500, fuel:3, in:{hellSteel:3, soulGem:2},
+    out:{ item:{ name:'Рунный клинок',    slot:'weapon', type:'оружие', hands:1, dist:'ближняя', dmg:[18,36], req:{str:20,int:15}, weight:4, bonus:{ str:5, int:3 } } } },
+  { id:'necro_staff', ws:'carpentry', name:'Посох некроманта', sparks:600, fuel:2, in:{dragonScale:2, soulGem:3},
+    out:{ item:{ name:'Посох некроманта', slot:'weapon', type:'оружие', hands:2, dist:'средняя',  dmg:[10,20], req:{int:20,fai:15}, weight:4, bonus:{ int:10, fai:5 } } } },
+  { id:'star_bow',    ws:'carpentry', name:'Звёздный лук',     sparks:450, fuel:2, in:{starCrystal:3, fiber:10},
+    out:{ item:{ name:'Звёздный лук',     slot:'weapon', type:'оружие', hands:2, dist:'дальняя',  dmg:[14,28], req:{agi:20,luk:10}, weight:3, bonus:{ agi:5, luk:5 } } } },
+  { id:'hell_maul',   ws:'smithy',    name:'Адский молот',     sparks:700, fuel:4, in:{hellSteel:5, dragonScale:2},
+    out:{ item:{ name:'Адский молот',     slot:'weapon', type:'оружие', hands:2, dist:'ближняя',  dmg:[25,50], req:{str:25,end:15}, weight:12, bonus:{ str:8 } } } },
+
+  // --- ЛЕГЕНДАРНАЯ БРОНЯ ---
+  { id:'dragon_armor', ws:'smithy', name:'Доспех дракона', sparks:800, fuel:5, in:{dragonScale:5, metal:3},
+    out:{ item:{ name:'Доспех дракона', slot:'body', type:'броня', armorType:'тяжёлая', armor:30, weight:15, req:{str:20,end:15}, bonus:{ str:5, end:5 } } } },
+  { id:'arcane_robe',  ws:'loom',   name:'Мантия мага',   sparks:600, fuel:2, in:{arcaneEssence:3, cloth:5},
+    out:{ item:{ name:'Мантия мага',   slot:'body', type:'броня', armorType:'лёгкая',   armor:8,  weight:3,  req:{int:20,fai:10}, bonus:{ int:12, fai:6 } } } },
+  { id:'shadow_helm',  ws:'smithy', name:'Шлем теней',    sparks:500, fuel:3, in:{hellSteel:3, soulGem:1},
+    out:{ item:{ name:'Шлем теней',    slot:'head', type:'броня', armorType:'тяжёлая', armor:18, weight:8,  req:{str:18,agi:12}, bonus:{ agi:5, fur:5 } } } },
+
+  // --- ЛЕГЕНДАРНАЯ БИЖУТЕРИЯ ---
+  { id:'star_amulet',  ws:'jewelry', name:'Амулет звёзд',    sparks:400, in:{starCrystal:2, gem:3},
+    out:{ item:{ name:'Амулет звёзд',    slot:'amulet',  type:'бижутерия', weight:0, bonus:{ fai:8, luk:5 } } } },
+  { id:'dragon_ring',  ws:'jewelry', name:'Кольцо дракона',  sparks:350, in:{dragonScale:1, gem:2},
+    out:{ item:{ name:'Кольцо дракона',  slot:'ring',    type:'бижутерия', weight:0, bonus:{ str:6, end:4 } } } },
+  { id:'hell_earring', ws:'jewelry', name:'Серьги ада',      sparks:300, in:{hellSteel:1, soulGem:1},
+    out:{ item:{ name:'Серьги ада',      slot:'earring', type:'бижутерия', weight:0, bonus:{ fur:6, rea:4 } } } },
+
   // --- БУТЫЛКИ: эликсиры/зелья/мази (раздел «Бутылки») ---
   { id:'hp_elixir',  ws:'lab', name:'Эликсир жизни', in:{herb:5},
     out:{ item:{ name:'Эликсир жизни', slot:null, type:'эликсир', use:{ heal:40 }, stack:true } } },
@@ -291,4 +336,10 @@ const QUESTS = [
     desc:'Накопи золото. Градиент 100 / 1000 / 10000.', reward:{ sparks:100 } },
   { id:'q_explore', name:'Первопроходец', type:'locations', goal:[3,12,30],
     desc:'Побывай в разных локациях миров. Градиент 3 / 12 / 30.', reward:{ gold:80, souls:1 } },
+  { id:'q_pvp',    name:'ПвП воин',          type:'pvp',    goal:[1,10,50],
+    desc:'Победи других игроков на арене. Градиент 1 / 10 / 50.', reward:{ gold:200, sparks:200 } },
+  { id:'q_boss',   name:'Охотник на боссов', type:'boss',   goal:[1,5,20],
+    desc:'Сразись и победи боссов в мирах. Градиент 1 / 5 / 20.', reward:{ gold:300, souls:1 } },
+  { id:'q_spells', name:'Мастер магии',       type:'spells', goal:[3,8,12],
+    desc:'Изучи заклинания. Градиент 3 / 8 / 12.', reward:{ sparks:300 } },
 ];
