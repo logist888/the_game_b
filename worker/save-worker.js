@@ -17,6 +17,7 @@
  */
 
 const ALLOWED_ORIGIN = 'https://logist888.github.io';
+const GAME_URL = 'https://logist888.github.io/the_game_b/';
 
 // Отправить сообщение пользователю через бот
 async function tgNotify(botToken, botHandle, chatId, html) {
@@ -28,8 +29,10 @@ async function tgNotify(botToken, botHandle, chatId, html) {
         chat_id: chatId,
         text: html,
         parse_mode: 'HTML',
+        // web_app-кнопка открывает Mini App напрямую (работает в личке с ботом,
+        // не требует настройки Main Mini App в BotFather).
         reply_markup: JSON.stringify({
-          inline_keyboard: [[{ text: '🎮 Открыть игру', url: `https://t.me/${botHandle}` }]],
+          inline_keyboard: [[{ text: '🎮 Открыть игру', web_app: { url: GAME_URL } }]],
         }),
       }),
     });

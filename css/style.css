@@ -141,8 +141,12 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .shop-row{display:grid; grid-template-columns:1fr auto auto auto auto; gap:.5em; align-items:center; padding:.25em 0; border-bottom:1px dashed #2a2016; font-size:.88rem}
 .recipe-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.6rem}
 .recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem}
-.recipe.locked{opacity:.55}
-.rc-out .ws{color:var(--muted); font-size:.78em} .rc-in{color:var(--muted); margin:.3em 0}
+.recipe.locked{opacity:.7}
+.rc-out .ws{color:var(--muted); font-size:.78em} .rc-in{color:var(--muted); margin:.3em 0; display:flex; flex-wrap:wrap; gap:.25em}
+.rc-chip{background:#241a10; border:1px solid var(--line); border-radius:5px; padding:.05em .35em; font-size:.92em}
+.rc-chip i{color:var(--muted); font-style:normal; font-size:.9em}
+.rc-chip.lack{border-color:var(--danger); color:#e6896f}
+.rc-chip.lack i{color:#c56a52}
 
 /* academy / quests */
 .academy-row{padding:.4em 0; border-bottom:1px dashed #2a2016; font-size:.85rem; opacity:.6}
@@ -190,6 +194,7 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .cc-atk{margin:0 0 0 .3em; white-space:nowrap; flex-shrink:0}
 .cc-row{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin:.35em 0}
 .cc-row select{flex:1; min-width:0}
+.cc-spell-desc{font-size:.75rem; color:var(--muted); background:#1c150e; border:1px solid var(--line); border-radius:6px; padding:.3em .5em; margin:.1em 0 .35em}
 .combat-log{background:#120d08; border:1px solid var(--line); border-radius:8px; padding:.4em .5em; font-size:.78rem; max-height:110px; overflow-y:auto; line-height:1.5; margin:.5em 0}
 .combat-result{text-align:center; padding:1em}
 .combat-result.win h3{color:var(--xp)} .combat-result.lose h3{color:var(--hp)}
@@ -238,7 +243,9 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
   background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;margin-bottom:.5rem}
 .pvp-card-info{display:flex;flex-direction:column;gap:.1rem;font-size:.85em}
 .bot-tag{font-size:.85em;opacity:.7}
-.pvp-result{background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:1rem;text-align:center}
+.pvp-result{position:relative;background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:1rem;text-align:center;margin-bottom:.6em}
+.pvp-result-close{position:absolute;top:.4em;right:.5em;background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1}
+.pvp-result-close:hover{color:var(--gold)}
 .pvp-result.win{border-color:#6fa84f}
 .pvp-result.lose{border-color:#b5403a}
 .pvp-result-title{font-size:1.3rem;font-weight:700;margin-bottom:.3em}
