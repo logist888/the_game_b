@@ -7,6 +7,9 @@ let expedSel = { world: 0, loc: 0, diff: 100 };
 let marketLots = [];
 let marketLoaded = false;
 let marketBusy = false;
+let clansList = [];
+let clansLoaded = false;
+let clanBusy = false;
 let combatSel = { target: 0, atkZone: 'торс', blockZone: 'голова', spell: '' };
 
 const $ = (id) => document.getElementById(id);
@@ -49,7 +52,7 @@ function render() {
   const views = {
     tower: viewTower, stats: viewStats, stairs: viewStairs, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
-    market: viewMarket, tavern: viewTavern, bank: viewBank, council: viewCouncil,
+    market: viewMarket, tavern: viewTavern, bank: viewBank, clans: viewClans, council: viewCouncil,
   };
   // баннер с артом здания над страницей (кроме башни и лестницы — у них свои баннеры)
   const noBanner = ['tower', 'stairs'];
@@ -62,6 +65,7 @@ function render() {
   if (activeView === 'council') { setTimeout(loadLeaderboard, 0); setTimeout(loadRefLeaderboard, 0); }
   if (activeView === 'arena') setTimeout(loadPvpOpponents, 0);
   if (activeView === 'market' && !marketLoaded) setTimeout(loadMarket, 0);
+  if (activeView === 'clans' && !clansLoaded) setTimeout(loadClansView, 0);
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
@@ -631,6 +635,139 @@ function viewMarket() {
 
     <h3>⚔️ Выставить снаряжение</h3>
     <div class="mk-sell">${sellItems}</div>
+  </div>`;
+}
+
+// ---------------- Кланы ----------------
+const CLAN_CREATE_COST = 5000;
+
+async function loadClansView() {
+  if (!_marketOnline()) return;
+  try {
+    const [meR, allR] = await Promise.all([
+      fetch(`${CLOUD_URL}/clan?user_id=${TG_USER.id}`),
+      fetch(`${CLOUD_URL}/clans`),
+    ]);
+    player.clan = meR.ok ? await meR.json() : null;
+    clansList = allR.ok ? await allR.json() : [];
+    clansLoaded = true;
+    recalc();
+    saveGame();
+    if (activeView === 'clans') render();
+  } catch (e) {}
+}
+
+async function createClan() {
+  if (clanBusy) return;
+  const name = ($('clan-name')?.value || '').trim();
+  const tag = ($('clan-tag')?.value || '').trim();
+  if (name.length < 3) { showToast('Название от 3 символов'); return; }
+  if (!hasRes('gold', CLAN_CREATE_COST)) { showToast(`🪙 Нужно ${CLAN_CREATE_COST} золота`); return; }
+  clanBusy = true;
+  const resp = await _marketPost('/clan/create', { name, tag });
+  clanBusy = false;
+  if (!resp.ok) { pushLog(resp.data && resp.data.error === 'already' ? '❌ Вы уже состоите в клане.' : '❌ Не удалось создать клан.'); render(); return; }
+  spendRes('gold', CLAN_CREATE_COST);
+  pushLog(`🛡 Клан «${name}» основан! Списано ${CLAN_CREATE_COST} 🪙.`);
+  saveGame();
+  loadClansView();
+  render();
+}
+
+async function joinClan(id) {
+  if (clanBusy) return;
+  clanBusy = true;
+  const resp = await _marketPost('/clan/join', { clanId: id });
+  clanBusy = false;
+  if (!resp.ok) {
+    const why = resp.data && resp.data.error;
+    pushLog(`❌ Не удалось вступить: ${why === 'already' ? 'вы уже в клане' : why === 'full' ? 'клан переполнен' : why === 'gone' ? 'клан не найден' : 'ошибка'}.`);
+    loadClansView(); render(); return;
+  }
+  pushLog('🛡 Вы вступили в клан!');
+  loadClansView();
+  render();
+}
+
+async function leaveClan() {
+  if (clanBusy) return;
+  if (typeof confirm === 'function' && !confirm('Покинуть клан? Бонус клана пропадёт.')) return;
+  clanBusy = true;
+  const resp = await _marketPost('/clan/leave', {});
+  clanBusy = false;
+  if (!resp.ok) { pushLog('❌ Не удалось покинуть клан.'); return; }
+  player.clan = null;
+  recalc();
+  pushLog('🚪 Вы покинули клан.');
+  saveGame();
+  loadClansView();
+  render();
+}
+
+async function donateClan() {
+  if (clanBusy) return;
+  const amount = Math.floor(+($('clan-donate')?.value || 0));
+  if (!(amount > 0)) { showToast('Укажите сумму'); return; }
+  if (!hasRes('gold', amount)) { showToast('🪙 Недостаточно золота'); return; }
+  clanBusy = true;
+  const resp = await _marketPost('/clan/donate', { amount });
+  clanBusy = false;
+  if (!resp.ok) { pushLog('❌ Взнос не прошёл.'); return; }
+  spendRes('gold', amount);
+  pushLog(`💰 Взнос в казну клана: ${amount} 🪙.`);
+  saveGame();
+  loadClansView();
+  render();
+}
+
+function viewClans() {
+  if (!_marketOnline()) {
+    return `<div class="panel"><h2>🛡️ Кланы</h2>
+      <p class="muted">Кланы доступны только в Telegram (нужен облачный аккаунт). Открой игру через бота.</p></div>`;
+  }
+  if (!clansLoaded) return `<div class="panel"><h2>🛡️ Кланы</h2><p class="muted">Загрузка…</p></div>`;
+
+  const c = player.clan;
+  if (c && c.members) {
+    const buff = Math.min(4, Math.floor(c.size / 3));
+    const members = c.members.map((m) => `<div class="clan-member">
+      <span>${m.isLeader ? '👑 ' : ''}${esc(m.name)}</span>
+      <span class="muted">ур. ${m.xpLevel} · опасность ${m.danger}</span>
+    </div>`).join('');
+    return `<div class="panel">
+      <h2>🛡️ ${esc(c.name)} ${c.tag ? `<span class="tag">[${esc(c.tag)}]</span>` : ''}</h2>
+      <p class="muted">Лидер: <b>${esc(c.leaderName)}</b> · Участников: <b>${c.size}/20</b></p>
+      <div class="clan-buff">⚜️ Бонус клана: <b>+${buff}</b> ко всем статам каждому участнику</div>
+      <div class="kv big-kv"><span>💰 Казна клана</span><b>${c.treasury} 🪙</b></div>
+      <div class="form-row">
+        <input id="clan-donate" class="mk-input" type="number" min="1" placeholder="сумма 🪙">
+        <button class="mini" onclick="donateClan()">внести в казну</button>
+      </div>
+      <h3>Состав</h3>
+      <div class="clan-roster">${members}</div>
+      <button class="big danger" onclick="leaveClan()">🚪 Покинуть клан</button>
+    </div>`;
+  }
+
+  const list = clansList.length ? clansList.map((cl) => `<div class="clan-row">
+    <span><b>${esc(cl.name)}</b> ${cl.tag ? `<span class="tag">[${esc(cl.tag)}]</span>` : ''} <span class="muted">— ${esc(cl.leaderName)}</span></span>
+    <span class="muted">👥 ${cl.size}/20 · 💰 ${cl.treasury}</span>
+    <button class="mini" ${cl.size >= 20 ? 'disabled' : ''} onclick="joinClan('${cl.id}')">вступить</button>
+  </div>`).join('') : '<p class="muted">Пока нет ни одного клана. Основай первый!</p>';
+
+  return `<div class="panel">
+    <h2>🛡️ Кланы</h2>
+    <p class="muted">Вступи в клан или основай свой. Чем больше клан — тем выше пассивный бонус всем участникам (+1 к статам за каждые 3 бойца, до +4).</p>
+
+    <h3>Основать клан</h3>
+    <div class="form-row">
+      <input id="clan-name" class="mk-input" style="width:160px" type="text" maxlength="24" placeholder="название">
+      <input id="clan-tag" class="mk-input" style="width:80px" type="text" maxlength="5" placeholder="тег">
+      <button class="mini" ${hasRes('gold', CLAN_CREATE_COST) ? '' : 'disabled'} onclick="createClan()">создать за ${CLAN_CREATE_COST} 🪙</button>
+    </div>
+
+    <h3>Кланы (${clansList.length})</h3>
+    <div class="clan-list">${list}</div>
   </div>`;
 }
 

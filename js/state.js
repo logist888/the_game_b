@@ -42,6 +42,7 @@ function newPlayer(name) {
     lastTick: Date.now(),
     log: [],
     refCount: 0,
+    clan: null,           // кэш данных клана (обновляется с сервера, не авторитетен)
     referredBy: null,
     refRegistered: false,
     welcomeSeen: false,
@@ -181,7 +182,11 @@ function recalc() {
   if (player.counters.bossKills == null) player.counters.bossKills = 0;
   if (!player.professions) player.professions = {};
   PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
-  const v = (k) => player.stats[k].val + equipBonus(k);
+  // Пассивный бонус клана («клановый артефакт»): +1 ко всем статам за каждые
+  // 3 участника, максимум +4. Берётся из кэша player.clan (обновляется с сервера).
+  const clanBuff = player.clan && player.clan.size ? Math.min(4, Math.floor(player.clan.size / 3)) : 0;
+  player.clanBuff = clanBuff;
+  const v = (k) => player.stats[k].val + equipBonus(k) + clanBuff;
   const maxHp = 100 + v('end') * 5;
   const maxMp = 20 + v('int') * 5;
   player.maxHp = maxHp;
