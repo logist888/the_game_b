@@ -237,7 +237,9 @@ function itemImgPath(it) {
 function artFrame(base, svg, cls, exts) {
   exts = exts || ['png', 'jpg'];
   const rest = exts.slice(1).join(',');
-  return `<span class="artframe ${cls || ''}"><img alt="" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
+  // SVG/эмодзи-заглушка кладётся в DOM скрытой (CSS .artframe>svg{display:none});
+  // показывается классом .no-img, если ни один формат картинки не загрузился.
+  return `<span class="artframe ${cls || ''}">${svg || ''}<img alt="" src="${base}.${exts[0]}" data-base="${base}" data-exts="${rest}" onerror="artImgFallback(this)"></span>`;
 }
 function artImgFallback(img) {
   const rest = (img.dataset.exts || '').split(',').filter(Boolean);
@@ -245,6 +247,9 @@ function artImgFallback(img) {
     img.dataset.exts = rest.slice(1).join(',');
     img.src = img.dataset.base + '.' + rest[0];
   } else {
+    // картинок нет ни в одном формате — раскрываем процедурную заглушку
+    const frame = img.closest('.artframe');
+    if (frame) frame.classList.add('no-img');
     img.remove();
   }
 }

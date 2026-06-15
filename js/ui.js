@@ -15,6 +15,22 @@ let combatSel = { target: 0, atkZone: 'торс', blockZone: 'голова', spe
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 
+// Босс по тем же ключевым словам, что и в combat.js (регистронезависимо).
+function isBossName(n) {
+  const l = String(n).toLowerCase();
+  return typeof BOSS_WORDS !== 'undefined' && BOSS_WORDS.some((w) => l.includes(w.toLowerCase()));
+}
+// Имя моба с пометкой босса (⭐) для списков локаций.
+function mobLabel(n) { return n + (isBossName(n) ? ' ⭐' : ''); }
+
+// Суммарный накопленный опыт (для таблицы зала славы): сумма требований
+// всех пройденных уровней + текущий прогресс уровня.
+function totalXp(level, xp) {
+  let t = xp || 0;
+  for (let l = 1; l < (level || 1); l++) t += xpNeed(l);
+  return t;
+}
+
 function setView(v) { activeView = v; render(); }
 
 function bar(cur, max, cls) {
@@ -215,7 +231,7 @@ function itemCard(it) {
 function viewStairs() {
   const worldOpts = WORLDS.map((w, i) => `<option value="${i}" ${expedSel.world === i ? 'selected' : ''}>${i + 1}. ${w.name} (сложность ×${w.tier})</option>`).join('');
   const w = WORLDS[expedSel.world];
-  const locOpts = w.locations.map((l, i) => `<option value="${i}" ${expedSel.loc === i ? 'selected' : ''}>${l[0]} — ${l[1].join(', ')}</option>`).join('');
+  const locOpts = w.locations.map((l, i) => `<option value="${i}" ${expedSel.loc === i ? 'selected' : ''}>${l[0]} — ${l[1].map(mobLabel).join(', ')}</option>`).join('');
   const diffs = [75, 100, 125, 150, 175, 200].map((d) => `<option value="${d}" ${expedSel.diff === d ? 'selected' : ''}>${d}%</option>`).join('');
   const loc = w.locations[expedSel.loc];
   return `<div class="panel">
@@ -448,7 +464,7 @@ function viewAcademy() {
     const seen = player.visitedLocations.some((v) => v.startsWith(w.name + ' /'));
     return `<div class="academy-row ${seen ? 'seen' : ''}">
       <b>${i + 1}. ${w.name}</b> <span class="muted">сложность ×${w.tier}</span>
-      <div>${seen ? w.locations.map((l) => `${l[0]} — ${l[1].join(', ')}`).join('; ') : '<i>Terra Incognita — мир ещё не исследован</i>'}</div>
+      <div>${seen ? w.locations.map((l) => `${l[0]} — ${l[1].map(mobLabel).join(', ')}`).join('; ') : '<i>Terra Incognita — мир ещё не исследован</i>'}</div>
     </div>`;
   }).join('');
 
@@ -899,7 +915,7 @@ async function loadLeaderboard() {
         <td>${medal(i)}</td>
         <td>${esc(row.name)}</td>
         <td><b>${row.xpLevel}</b></td>
-        <td>${(row.xp || 0).toLocaleString()}</td>
+        <td>${totalXp(row.xpLevel, row.xp).toLocaleString()}</td>
         <td>${row.kills || 0}</td>
       </tr>`).join('')}</tbody>
     </table>`;
@@ -937,7 +953,8 @@ function closeCombat() { $('combat').classList.remove('open'); }
 function renderCombat() {
   if (!combat) return;
   const mobsHtml = combat.mobs.map((m, i) => `
-    <div class="mob ${m.hp <= 0 ? 'dead' : ''} ${combatSel.target === i ? 'sel' : ''}" onclick="combatSel.target=${i}; combat.target=${i}; renderCombat()">
+    <div class="mob ${m.hp <= 0 ? 'dead' : ''} ${m.isBoss ? 'boss' : ''} ${combatSel.target === i ? 'sel' : ''}" onclick="combatSel.target=${i}; combat.target=${i}; renderCombat()">
+      ${m.isBoss ? '<div class="boss-badge">👑 БОСС</div>' : ''}
       <div class="mob-art">${mobArt(m.name, { boss: m.isBoss })}</div>
       <div class="mname">${esc(m.name)}</div>
       ${bar(Math.max(0, m.hp), m.maxHp, 'hp')}
@@ -945,7 +962,8 @@ function renderCombat() {
     </div>`).join('');
 
   const zoneOpts = (sel) => ZONES.map((z) => `<option value="${z}" ${sel === z ? 'selected' : ''}>${z}</option>`).join('');
-  const spellOpts = player.spells.map((id) => { const s = SPELLS.find((x) => x.id === id); return `<option value="${id}">${s.name} (${s.cost} MP)</option>`; }).join('');
+  const curSpell = combatSel.spell || (player.spells[0] || '');
+  const spellOpts = player.spells.map((id) => { const s = SPELLS.find((x) => x.id === id); return `<option value="${id}" ${id === curSpell ? 'selected' : ''}>${s.name} (${s.cost} MP)</option>`; }).join('');
   const elixirs = player.inventory.filter((it) => it.use);
   const elixirBtns = elixirs.map((it) => `<button class="mini" onclick="playerUseItem(${it.id}); renderCombat()">${esc(it.name)}${it.qty ? ' ×' + it.qty : ''}</button>`).join('') || '<span class="muted">нет расходников</span>';
 
