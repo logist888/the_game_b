@@ -276,6 +276,7 @@ function viewArena() {
     </div>
     <h3>⚔️ Соперники</h3>
     <p class="muted">Бойцы рядом с тобой по силе. Бой авто-расчётный — победа даёт золото и опыт.</p>
+    <div id="pvp-result"></div>
     <div id="pvp-opponents">${initHtml}</div>
     <h3>🤖 Тренировочный бой</h3>
     <p class="muted">Бой с тёмным двойником ради опыта.</p>
@@ -310,8 +311,9 @@ function challengeOpponent(idx) {
   if (!opp) { showToast('Соперник недоступен'); return; }
   const { won, log } = _simulatePvp(opp);
 
-  const goldReward = won ? Math.round(30 * (opp.danger || 1)) : -Math.round(10 * player.danger);
-  const xpReward  = won ? Math.round(50 * (opp.danger || 1)) : Math.round(10 * (opp.danger || 1));
+  // Награды умеренные, чтобы уровень не качался слишком быстро на арене
+  const goldReward = won ? Math.round(12 * (opp.danger || 1)) : -Math.round(8 * player.danger);
+  const xpReward  = won ? Math.round(6 * (opp.danger || 1)) : Math.round(2 * (opp.danger || 1));
 
   if (won) { player.pvp.wins = (player.pvp.wins || 0) + 1; }
   else     { player.pvp.losses = (player.pvp.losses || 0) + 1; }
@@ -329,16 +331,18 @@ function challengeOpponent(idx) {
     }).catch(() => {});
   }
 
-  // render() сначала — обновляет HUD, лог, статы. Потом поверх ставим результат боя.
+  // render() обновляет HUD/лог/статы и пересобирает панель арены; результат
+  // кладём в отдельный контейнер #pvp-result, чтобы автообновление списка
+  // соперников его не затирало. Висит, пока не закрыть крестиком.
   render();
-  const el = document.getElementById('pvp-opponents');
+  const el = document.getElementById('pvp-result');
   if (!el) return;
   el.innerHTML = `<div class="pvp-result ${won ? 'win' : 'lose'}">
+    <button class="pvp-result-close" onclick="document.getElementById('pvp-result').innerHTML=''">✕</button>
     <div class="pvp-result-title">${won ? '🏆 Победа!' : '💀 Поражение'}</div>
     <div class="pvp-result-vs">vs <b>${esc(opp.name)}</b></div>
     <div class="pvp-log">${log.map(l => `<div>${esc(l)}</div>`).join('')}</div>
     <div class="pvp-rewards">Золото: ${goldReward > 0 ? '+' : ''}${goldReward} · XP: +${xpReward}</div>
-    <button class="mini" onclick="render()">Найти ещё соперника</button>
   </div>`;
 }
 
@@ -391,11 +395,27 @@ async function loadPvpOpponents() {
 
 // ---------------- Мастерские и Лаборатория ----------------
 function recipeCard(r) {
-  const ins = Object.entries(r.in || {}).map(([k, v]) => `${v}× ${RESOURCES[k].name}`).join(', ');
-  const extra = [r.sparks ? `${r.sparks} 🔥` : '', r.fuel ? `${r.fuel} топлива (уголь/брёвна)` : ''].filter(Boolean).join(', ');
   const known = player.knownRecipes.includes(r.id);
   const out = r.out.res ? `${r.out.qty || 1}× ${RESOURCES[r.out.res].name}` : r.out.item.name;
   const ok = canCraft(r) && known;
+
+  // ингредиенты с пометкой нехватки (есть N / нужно M)
+  const lacks = [];
+  const chip = (icon, name, req, have) => {
+    const enough = have >= req;
+    if (!enough) lacks.push(name);
+    return `<span class="rc-chip ${enough ? '' : 'lack'}">${icon} ${req}× ${name} <i>(есть ${have})</i></span>`;
+  };
+  let chips = Object.entries(r.in || {}).map(([k, v]) => chip(RESOURCES[k].icon, RESOURCES[k].name, v, player.resources[k] || 0)).join(' ');
+  if (r.sparks) chips += ' ' + chip('🔥', 'Искры', r.sparks, player.resources.sparks || 0);
+  // топливо: нужен 1× уголь ИЛИ 6× бревно на единицу топлива
+  if (r.fuel) {
+    const coal = player.resources.coal || 0, logs = player.resources.log || 0;
+    const fuelOk = coal >= r.fuel || logs >= r.fuel * 6;
+    if (!fuelOk) lacks.push('топливо');
+    chips += ` <span class="rc-chip ${fuelOk ? '' : 'lack'}">🔥 топливо: ${r.fuel}× ⚫ уголь <i>(есть ${coal})</i> или ${r.fuel * 6}× 🪵 бревно <i>(есть ${logs})</i></span>`;
+  }
+
   // подсказка, как открыть неизученный рецепт (профессия+уровень или босс)
   let lockHint = 'рецепт не изучен';
   if (!known) {
@@ -405,9 +425,12 @@ function recipeCard(r) {
   }
   return `<div class="recipe ${ok ? '' : 'locked'}">
     <div class="rc-out"><b>${esc(out)}</b> <span class="ws">[${WORKSHOPS[r.ws]}]</span></div>
-    <div class="rc-in">${ins}${extra ? ' · ' + extra : ''}</div>
-    ${known ? `<button class="mini" ${ok ? '' : 'disabled'} onclick="craft('${r.id}')">создать</button>`
-            : `<span class="muted">${lockHint}</span>`}
+    <div class="rc-in">${chips}</div>
+    ${known
+      ? (ok
+          ? `<button class="mini" onclick="craft('${r.id}')">создать</button>`
+          : `<span class="muted">⚠ не хватает: ${lacks.join(', ')}</span>`)
+      : `<span class="muted">${lockHint}</span>`}
   </div>`;
 }
 function viewWorkshops() {
@@ -965,6 +988,8 @@ function renderCombat() {
 
   const zoneOpts = (sel) => ZONES.map((z) => `<option value="${z}" ${sel === z ? 'selected' : ''}>${z}</option>`).join('');
   const curSpell = combatSel.spell || (player.spells[0] || '');
+  const _cs = SPELLS.find((x) => x.id === curSpell);
+  const curSpellDesc = _cs ? `${_cs.element}/${_cs.dir} · ${_cs.desc}` : '';
   const spellOpts = player.spells.map((id) => { const s = SPELLS.find((x) => x.id === id); return `<option value="${id}" ${id === curSpell ? 'selected' : ''}>${s.name} (${s.cost} MP)</option>`; }).join('');
   const elixirs = player.inventory.filter((it) => it.use);
   const elixirBtns = elixirs.map((it) => `<button class="mini" onclick="playerUseItem(${it.id}); renderCombat()">${esc(it.name)}${it.qty ? ' ×' + it.qty : ''}</button>`).join('') || '<span class="muted">нет расходников</span>';
@@ -982,10 +1007,11 @@ function renderCombat() {
         <button class="big cc-atk" onclick="playerAttack(combatSel.atkZone, combatSel.blockZone); renderCombat()">🗡️ Удар</button>
       </div>
       <div class="cc-row">
-        <select onchange="combatSel.spell=this.value" id="spellSel">${spellOpts}</select>
+        <select onchange="combatSel.spell=this.value; renderCombat()" id="spellSel">${spellOpts}</select>
         <button class="mini" ${combat.castUsed ? 'disabled title="Уже кастовали в этот ход"' : ''} onclick="playerCast(document.getElementById('spellSel').value || player.spells[0], combatSel.atkZone); renderCombat()">✨ Каст</button>
         <button class="mini danger" onclick="playerFlee(); renderCombat()">🏃</button>
       </div>
+      ${curSpellDesc ? `<div class="cc-spell-desc">${esc(curSpellDesc)}</div>` : ''}
       <div class="cc-row">${elixirBtns}</div>
     </div>`;
 
