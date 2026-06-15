@@ -472,12 +472,37 @@ function viewShop() {
     <button class="mini" onclick="buyRes('${g.res}',10)">+10</button>
     <button class="mini" onclick="sellRes('${g.res}',1)">продать</button>
   </div>`).join('');
+  const gearCat = (title, list) => {
+    if (!list.length) return '';
+    const rows = list.map((r) => {
+      const it = r.out.item;
+      const price = gearPrice(r);
+      const stat = it.dmg ? `урон ${it.dmg[0]}–${it.dmg[1]}`
+        : it.armor ? `броня ${it.armor}`
+        : (it.bonus ? Object.entries(it.bonus).map(([k, v]) => `+${v} ${STATS[k].name}`).join(', ') : '');
+      const req = it.req && Object.keys(it.req).length ? ` · треб: ${Object.entries(it.req).map(([k, v]) => `${STATS[k].name} ${v}`).join(', ')}` : '';
+      return `<div class="shop-row gear">
+        <span>${esc(it.name)} <span class="muted">${stat}${req}</span></span>
+        <span class="muted">${price} 🪙</span>
+        <button class="mini" ${hasRes('gold', price) ? '' : 'disabled'} onclick="buyGear('${r.id}')">купить</button>
+      </div>`;
+    }).join('');
+    return `<h4 class="shop-sub">${title}</h4>${rows}`;
+  };
+  const gearHtml =
+    gearCat('⚔️ Оружие', SHOP_GEAR.filter((r) => r.out.item.slot === 'weapon')) +
+    gearCat('🛡 Броня', SHOP_GEAR.filter((r) => ['head', 'body', 'shield'].includes(r.out.item.slot))) +
+    gearCat('💍 Бижутерия', SHOP_GEAR.filter((r) => ['ring', 'amulet', 'earring'].includes(r.out.item.slot)));
+
   return `<div class="panel">
     <h2>🏪 Магазин</h2>
-    <p class="muted">Купить ресурсы и расходники, продать трофеи. Цены продажи — половина закупки.</p>
+    <p class="muted">Купить ресурсы, снаряжение и расходники, продать трофеи. Цены продажи — половина закупки.</p>
+    <h3>🪖 Снаряжение за золото</h3>
+    <p class="muted">Готовое снаряжение без крафта — оденься хоть сейчас. Легендарки тут не продаются (их крафтят/добывают).</p>
+    ${gearHtml}
     <h3>Добыть руками (бесплатно)</h3>
     <div class="gather-grid">${GATHER_TABLE.map((g) => `<button class="mini" onclick="gather('${g.res}')">${RESOURCES[g.res].icon} ${g.name}</button>`).join('')}</div>
-    <h3>Торговля</h3>${buy}
+    <h3>Ресурсы</h3>${buy}
     ${resInventory()}
   </div>`;
 }
@@ -1040,8 +1065,9 @@ function lootHtml() {
   return `<div class="loot">
     <div>⭐ Опыт: +${l.xp || 0} · 🪙 Золото: +${l.gold} · 🔥 Искры: +${l.sparks}</div>
     ${res ? `<div>Трофеи: ${res}</div>` : ''}
+    ${l.item ? `<div>🎁 Вещь: ${esc(l.item)}</div>` : ''}
     ${l.spell ? `<div>📜 Формула заклинания: ${esc(l.spell)}</div>` : ''}
-    ${l.recipe ? `<div>📐 Схема легендарного предмета: ${esc(l.recipe)}</div>` : ''}
+    ${l.recipe ? `<div>📐 Схема снаряжения: ${esc(l.recipe)}</div>` : ''}
   </div>`;
 }
 

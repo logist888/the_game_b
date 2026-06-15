@@ -335,6 +335,31 @@ function rollLoot() {
     const unknown = SPELLS.filter((s) => !player.spells.includes(s.id));
     if (unknown.length) { const s = unknown[rnd(0, unknown.length - 1)]; player.spells.push(s.id); combat.loot.spell = s.name; clog(`📜 Получена формула заклинания «${s.name}»!`); }
   }
+  // обычные схемы снаряжения (оружие/броня/бижутерия) — падают в любых мирах,
+  // чтобы прогрессия одевания не упиралась только в прокачку профессий
+  const stdRecipes = RECIPES.filter((x) => x.out.item && (x.sparks || 0) < 300).map((x) => x.id);
+  if (chance(18 + player.derived.lootBonus / 10)) {
+    const unknownStd = stdRecipes.filter((id) => !player.knownRecipes.includes(id));
+    if (unknownStd.length) {
+      const id = unknownStd[rnd(0, unknownStd.length - 1)];
+      player.knownRecipes.push(id);
+      const rec = RECIPES.find((x) => x.id === id);
+      combat.loot.recipe = rec ? rec.name : id;
+      clog(`📜 Найдена схема «${rec ? rec.name : id}»!`);
+    }
+  }
+  // изредка — готовая вещь-трофей (снаряжение со слотом)
+  if (chance(10 + player.derived.lootBonus / 10)) {
+    const wearable = RECIPES.filter((x) => x.out.item && x.out.item.slot && (x.sparks || 0) < 300);
+    const rec = wearable[rnd(0, wearable.length - 1)];
+    if (rec) {
+      const item = JSON.parse(JSON.stringify(rec.out.item));
+      item.durability = [1000, 1000];
+      addItem(item);
+      combat.loot.item = item.name;
+      clog(`🎁 Трофей: ${item.name}!`);
+    }
+  }
   // с боссов в мирах 7+ — схемы легендарного снаряжения
   const legendIds = ['rune_blade','necro_staff','star_bow','hell_maul','dragon_armor','arcane_robe','shadow_helm','star_amulet','dragon_ring','hell_earring'];
   if (tier >= 7 && bosses > 0 && chance(20 + player.derived.lootBonus / 10)) {

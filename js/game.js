@@ -168,6 +168,24 @@ function sellRes(res, qty) {
   render();
 }
 
+// --- Снаряжение за золото (обычное, нелегендарное) ---
+// Цена по «силе» предмета: искры рецепта как прокса + топливо + база.
+function gearPrice(r) { return 120 + (r.sparks || 0) * 4 + (r.fuel || 0) * 60; }
+// Список снаряжения, доступного к покупке (всё нелегендарное снаряжение со слотом).
+const SHOP_GEAR = RECIPES.filter((r) => r.out.item && r.out.item.slot && (r.sparks || 0) < 300);
+function buyGear(recipeId) {
+  const r = SHOP_GEAR.find((x) => x.id === recipeId);
+  if (!r) return;
+  const price = gearPrice(r);
+  if (!hasRes('gold', price)) { pushLog('🪙 Недостаточно золота на снаряжение.'); render(); return; }
+  spendRes('gold', price);
+  const item = JSON.parse(JSON.stringify(r.out.item));
+  item.durability = [1000, 1000];
+  addItem(item);
+  pushLog(`🛒 Куплено снаряжение: ${item.name} за ${price} 🪙.`);
+  render();
+}
+
 // --- Банк (монетизация GDD: Души → Золото / Искры) ---
 function exchangeSouls(kind) {
   if (!hasRes('souls', 1)) { pushLog('👻 Нет Душ для обмена.'); render(); return; }
