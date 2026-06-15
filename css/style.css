@@ -249,7 +249,7 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .pvp-rewards{font-size:.85em;margin:.5em 0;color:var(--gold2)}
 
 /* таблица лидеров */
-.lb-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+.lb-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem;overflow-x:auto}
 .lb-box h3{margin-top:0}
 
 /* реферальная программа */
@@ -258,9 +258,10 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .ref-stats span{background:var(--panel2);padding:.3em .7em;border-radius:6px;font-size:.9em}
 .ref-link-row{display:flex;gap:.4em;align-items:center;flex-wrap:wrap;margin:.6em 0}
 .ref-link-input{flex:1;min-width:0;background:#120d08;border:1px solid var(--line);color:var(--txt);padding:.35em .6em;border-radius:6px;font-size:.8em;outline:none}
-.ref-table{width:100%;border-collapse:collapse;font-size:.9em;margin-top:.5em}
-.ref-table th,.ref-table td{padding:.4em .6em;text-align:left;border-bottom:1px solid var(--line)}
-.ref-table th{color:var(--muted);font-weight:600;font-size:.8em;text-transform:uppercase}
+.ref-table{width:100%;border-collapse:collapse;font-size:.82em;margin-top:.5em}
+.ref-table th,.ref-table td{padding:.35em .4em;text-align:left;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.ref-table th{color:var(--muted);font-weight:600;font-size:.78em;text-transform:uppercase;white-space:nowrap}
+.ref-table td:first-child,.ref-table th:first-child{width:1.6em;text-align:center}
 .ref-table tr.self td{background:rgba(217,164,65,.08);color:var(--gold2)}
 
 @media(max-width:640px){
