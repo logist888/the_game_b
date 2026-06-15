@@ -8,7 +8,7 @@ compatibility_date = "2024-11-01"
 #   npx wrangler kv namespace create SAVES
 # и подставить выданный id.
 kv_namespaces = [
-  { binding = "SAVES", id = "PUT_YOUR_KV_NAMESPACE_ID_HERE" }
+  { binding = "SAVES", id = "BABYLON_SAVES" }
 ]
 
 # Cron-триггер: каждые 10 минут проверяет HP-уведомления (handler scheduled()).
