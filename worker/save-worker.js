@@ -108,6 +108,12 @@ export default {
         // Inject current referral count
         const refs = await env.SAVES.get(`refs_${userId}`, 'json');
         if (refs) data._refCount = refs.count || 0;
+        // Inject pending marketplace payout (gold from sold lots), consume once
+        const payout = await env.SAVES.get(`payout_${userId}`, 'json');
+        if (payout) {
+          data._pendingMarketGold = payout;
+          await env.SAVES.delete(`payout_${userId}`);
+        }
       }
       return new Response(JSON.stringify(data || null), {
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -384,6 +390,122 @@ export default {
           'Access-Control-Allow-Methods': 'GET',
         },
       });
+    }
+
+    // ==================== БАРАХОЛКА (раздел GDD «Барахолка») ====================
+    // Модель клиент-авторитарная (как и сохранения): золото игрок ведёт у себя,
+    // а сервер хранит ЭСКРОУ выставленных предметов (чтобы их нельзя было
+    // продублировать) и накапливает ВЫПЛАТЫ продавцу (доставляются при синхронизации).
+
+    const MARKET_TTL = 60 * 60 * 24 * 30; // лоты живут 30 дней
+    const MARKET_MAX_PER_SELLER = 12;     // лимит активных лотов на игрока
+
+    // Разбор и верификация пользователя из initData → { id, name } или null
+    const userFromInitData = async (initData) => {
+      if (!initData) return null;
+      if (!(await verifyInitData(initData, env.BOT_TOKEN))) return null;
+      try {
+        const u = JSON.parse(new URLSearchParams(initData).get('user'));
+        return { id: u.id, name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || 'Полубог' };
+      } catch { return null; }
+    };
+
+    const listAllLots = async () => {
+      const lots = [];
+      let cursor;
+      do {
+        const listed = await env.SAVES.list({ prefix: 'market_', cursor });
+        const entries = await Promise.all(listed.keys.map(({ name }) => env.SAVES.get(name, 'json')));
+        lots.push(...entries.filter(Boolean));
+        cursor = listed.list_complete ? undefined : listed.cursor;
+      } while (cursor);
+      return lots;
+    };
+
+    // --- GET /market --- все активные лоты (для просмотра и «мои лоты») ---
+    if (url.pathname === '/market' && request.method === 'GET') {
+      const lots = await listAllLots();
+      lots.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return new Response(JSON.stringify(lots), {
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
+      });
+    }
+
+    // --- POST /market/list  body: { initData, lot } --- выставить лот ---
+    if (url.pathname === '/market/list' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const seller = await userFromInitData(body.initData);
+      if (!seller) return new Response('Unauthorized', { status: 401, headers });
+
+      const lot = body.lot || {};
+      const price = Math.floor(Number(lot.price));
+      if (!(price > 0) || price > 1e9) return new Response('Bad price', { status: 400, headers });
+      if (lot.kind === 'res') {
+        if (typeof lot.res !== 'string' || !(Math.floor(Number(lot.qty)) > 0)) return new Response('Bad resource lot', { status: 400, headers });
+      } else if (lot.kind === 'item') {
+        if (!lot.item || typeof lot.item !== 'object' || !lot.item.name) return new Response('Bad item lot', { status: 400, headers });
+      } else {
+        return new Response('Bad kind', { status: 400, headers });
+      }
+
+      const mine = (await listAllLots()).filter((l) => String(l.sellerId) === String(seller.id));
+      if (mine.length >= MARKET_MAX_PER_SELLER) return new Response('Too many lots', { status: 429, headers });
+
+      const id = crypto.randomUUID();
+      const record = {
+        id, sellerId: String(seller.id), sellerName: seller.name,
+        kind: lot.kind, price, createdAt: Date.now(),
+        ...(lot.kind === 'res' ? { res: lot.res, qty: Math.floor(Number(lot.qty)) } : { item: lot.item }),
+      };
+      await env.SAVES.put(`market_${id}`, JSON.stringify(record), { expirationTtl: MARKET_TTL });
+      return new Response(JSON.stringify({ ok: true, id }), { headers: { ...headers, 'Content-Type': 'application/json' } });
+    }
+
+    // --- POST /market/buy  body: { initData, id } --- купить лот ---
+    if (url.pathname === '/market/buy' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const buyer = await userFromInitData(body.initData);
+      if (!buyer) return new Response('Unauthorized', { status: 401, headers });
+      if (!body.id) return new Response('Missing id', { status: 400, headers });
+
+      const key = `market_${body.id}`;
+      const lot = await env.SAVES.get(key, 'json');
+      if (!lot) return new Response(JSON.stringify({ error: 'gone' }), { status: 409, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (String(lot.sellerId) === String(buyer.id)) return new Response(JSON.stringify({ error: 'own' }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+      // Снимаем лот первым делом — снижает шанс двойной покупки
+      await env.SAVES.delete(key);
+
+      // Выплата продавцу за вычетом 1% комиссии (раздел GDD «Комиссия»)
+      const net = Math.max(1, Math.floor(lot.price * 0.99));
+      const payoutKey = `payout_${lot.sellerId}`;
+      const prev = (await env.SAVES.get(payoutKey, 'json')) || 0;
+      await env.SAVES.put(payoutKey, JSON.stringify(prev + net), { expirationTtl: 60 * 60 * 24 * 365 });
+
+      // Уведомляем продавца в Telegram
+      if (env.BOT_TOKEN && env.BOT_HANDLE) {
+        const what = lot.kind === 'res' ? `${lot.qty}× ресурса` : `«${lot.item.name}»`;
+        await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, lot.sellerId,
+          `💰 <b>Лот продан!</b>\n${buyer.name} купил ваш лот ${what}.\nВам начислено <b>+${net} 🪙</b> (после комиссии 1%).`);
+      }
+
+      return new Response(JSON.stringify({ ok: true, lot }), { headers: { ...headers, 'Content-Type': 'application/json' } });
+    }
+
+    // --- POST /market/cancel  body: { initData, id } --- снять свой лот ---
+    if (url.pathname === '/market/cancel' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      if (!body.id) return new Response('Missing id', { status: 400, headers });
+
+      const key = `market_${body.id}`;
+      const lot = await env.SAVES.get(key, 'json');
+      if (!lot) return new Response(JSON.stringify({ error: 'gone' }), { status: 409, headers: { ...headers, 'Content-Type': 'application/json' } });
+      if (String(lot.sellerId) !== String(user.id)) return new Response('Forbidden', { status: 403, headers });
+
+      await env.SAVES.delete(key);
+      return new Response(JSON.stringify({ ok: true, lot }), { headers: { ...headers, 'Content-Type': 'application/json' } });
     }
 
     // --- GET /admin?key=ADMIN_KEY ---

@@ -4,6 +4,9 @@
 
 let activeView = 'tower';
 let expedSel = { world: 0, loc: 0, diff: 100 };
+let marketLots = [];
+let marketLoaded = false;
+let marketBusy = false;
 let combatSel = { target: 0, atkZone: 'торс', blockZone: 'голова', spell: '' };
 
 const $ = (id) => document.getElementById(id);
@@ -46,7 +49,7 @@ function render() {
   const views = {
     tower: viewTower, stats: viewStats, stairs: viewStairs, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
-    tavern: viewTavern, bank: viewBank, council: viewCouncil,
+    market: viewMarket, tavern: viewTavern, bank: viewBank, council: viewCouncil,
   };
   // баннер с артом здания над страницей (кроме башни и лестницы — у них свои баннеры)
   const noBanner = ['tower', 'stairs'];
@@ -58,6 +61,7 @@ function render() {
   $('main').innerHTML = head + (views[activeView] || viewTower)();
   if (activeView === 'council') { setTimeout(loadLeaderboard, 0); setTimeout(loadRefLeaderboard, 0); }
   if (activeView === 'arena') setTimeout(loadPvpOpponents, 0);
+  if (activeView === 'market' && !marketLoaded) setTimeout(loadMarket, 0);
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
   const buildingTabs = TOWER_BUILDINGS.map((b) =>
@@ -460,6 +464,176 @@ function viewAcademy() {
     ${worlds}
   </div>`;
 }
+// ---------------- Барахолка (торговля между игроками) ----------------
+function _marketOnline() {
+  return window.TG_USER && TG_USER.initData && typeof CLOUD_URL === 'string' && !CLOUD_URL.includes('YOUR_SUBDOMAIN');
+}
+
+async function loadMarket() {
+  if (!_marketOnline()) return;
+  try {
+    const r = await fetch(`${CLOUD_URL}/market`);
+    if (!r.ok) return;
+    marketLots = await r.json();
+    marketLoaded = true;
+    if (activeView === 'market') render();
+  } catch (e) {}
+}
+
+async function _marketPost(path, payload) {
+  const r = await fetch(`${CLOUD_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: TG_USER.initData, ...payload }),
+  });
+  let data = null;
+  try { data = await r.json(); } catch (e) {}
+  return { ok: r.ok, status: r.status, data };
+}
+
+// Выставить ресурс на продажу
+async function listResourceLot(res) {
+  if (marketBusy) return;
+  const qty = Math.floor(+($(`mk-qty-${res}`)?.value || 0));
+  const price = Math.floor(+($(`mk-price-${res}`)?.value || 0));
+  if (!(qty > 0)) { showToast('Укажите количество'); return; }
+  if (!(price > 0)) { showToast('Укажите цену'); return; }
+  if (!hasRes(res, qty)) { showToast('Недостаточно ресурса'); return; }
+  marketBusy = true;
+  const resp = await _marketPost('/market/list', { lot: { kind: 'res', res, qty, price } });
+  marketBusy = false;
+  if (!resp.ok) { pushLog(`❌ Не удалось выставить лот${resp.status === 429 ? ' (лимит лотов)' : ''}.`); render(); return; }
+  spendRes(res, qty);
+  pushLog(`🏷️ Лот выставлен: ${qty}× ${RESOURCES[res].name} за ${price} 🪙.`);
+  saveGame();
+  loadMarket();
+  render();
+}
+
+// Выставить предмет (снаряжение) на продажу
+async function listItemLot(itemId) {
+  if (marketBusy) return;
+  const price = Math.floor(+($(`mk-iprice-${itemId}`)?.value || 0));
+  if (!(price > 0)) { showToast('Укажите цену'); return; }
+  const it = player.inventory.find((x) => x.id === itemId);
+  if (!it) return;
+  const itemCopy = JSON.parse(JSON.stringify(it));
+  delete itemCopy.id; // новый владелец получит свой id
+  marketBusy = true;
+  const resp = await _marketPost('/market/list', { lot: { kind: 'item', item: itemCopy, price } });
+  marketBusy = false;
+  if (!resp.ok) { pushLog(`❌ Не удалось выставить лот${resp.status === 429 ? ' (лимит лотов)' : ''}.`); render(); return; }
+  player.inventory = player.inventory.filter((x) => x.id !== itemId);
+  pushLog(`🏷️ Лот выставлен: «${it.name}» за ${price} 🪙.`);
+  saveGame();
+  loadMarket();
+  render();
+}
+
+// Купить лот
+async function buyLot(id) {
+  if (marketBusy) return;
+  const lot = marketLots.find((l) => l.id === id);
+  if (!lot) { showToast('Лот недоступен'); loadMarket(); return; }
+  if (!hasRes('gold', lot.price)) { showToast('🪙 Недостаточно золота'); return; }
+  marketBusy = true;
+  const resp = await _marketPost('/market/buy', { id });
+  marketBusy = false;
+  if (!resp.ok) {
+    const why = resp.data && resp.data.error === 'gone' ? 'лот уже продан' : resp.data && resp.data.error === 'own' ? 'это ваш лот' : 'ошибка';
+    pushLog(`❌ Покупка не удалась: ${why}.`);
+    loadMarket(); render(); return;
+  }
+  const bought = resp.data.lot;
+  spendRes('gold', lot.price);
+  if (bought.kind === 'res') { addRes(bought.res, bought.qty); pushLog(`🛍️ Куплено: ${bought.qty}× ${RESOURCES[bought.res].name} за ${lot.price} 🪙.`); }
+  else { addItem(bought.item); pushLog(`🛍️ Куплено: «${bought.item.name}» за ${lot.price} 🪙.`); }
+  saveGame();
+  loadMarket();
+  render();
+}
+
+// Снять свой лот (вернуть товар)
+async function cancelLot(id) {
+  if (marketBusy) return;
+  marketBusy = true;
+  const resp = await _marketPost('/market/cancel', { id });
+  marketBusy = false;
+  if (!resp.ok) { pushLog('❌ Не удалось снять лот.'); loadMarket(); render(); return; }
+  const lot = resp.data.lot;
+  if (lot.kind === 'res') { addRes(lot.res, lot.qty); pushLog(`↩️ Лот снят, возвращено ${lot.qty}× ${RESOURCES[lot.res].name}.`); }
+  else { addItem(lot.item); pushLog(`↩️ Лот снят, «${lot.item.name}» вернулся в рюкзак.`); }
+  saveGame();
+  loadMarket();
+  render();
+}
+
+function _lotLabel(lot) {
+  if (lot.kind === 'res') return `${RESOURCES[lot.res] ? RESOURCES[lot.res].icon : '📦'} ${lot.qty}× ${RESOURCES[lot.res] ? RESOURCES[lot.res].name : lot.res}`;
+  const it = lot.item;
+  let s = [];
+  if (it.dmg) s.push(`урон ${it.dmg[0]}–${it.dmg[1]}`);
+  if (it.armor) s.push(`броня ${it.armor}`);
+  if (it.bonus) s.push(Object.entries(it.bonus).map(([k, v]) => `+${v} ${STATS[k] ? STATS[k].name : k}`).join(', '));
+  return `⚔️ ${esc(it.name)}${s.length ? ` <span class="muted">(${s.join(' · ')})</span>` : ''}`;
+}
+
+function viewMarket() {
+  if (!_marketOnline()) {
+    return `<div class="panel"><h2>🏷️ Барахолка</h2>
+      <p class="muted">Торговля между игроками доступна только в Telegram (нужен облачный аккаунт). Открой игру через бота.</p></div>`;
+  }
+  const myId = String(TG_USER.id);
+  const mine = marketLots.filter((l) => String(l.sellerId) === myId);
+  const others = marketLots.filter((l) => String(l.sellerId) !== myId);
+
+  const myHtml = mine.length ? mine.map((l) => `<div class="mk-lot">
+    <span>${_lotLabel(l)}</span>
+    <span class="mk-price">${l.price} 🪙</span>
+    <button class="mini" onclick="cancelLot('${l.id}')">снять</button>
+  </div>`).join('') : '<p class="muted">У вас нет активных лотов.</p>';
+
+  const buyHtml = others.length ? others.map((l) => `<div class="mk-lot">
+    <span>${_lotLabel(l)} <span class="muted">— ${esc(l.sellerName || 'Полубог')}</span></span>
+    <span class="mk-price">${l.price} 🪙</span>
+    <button class="mini" ${hasRes('gold', l.price) ? '' : 'disabled'} onclick="buyLot('${l.id}')">купить</button>
+  </div>`).join('') : '<p class="muted">Пока никто ничего не продаёт. Выставьте лот первым!</p>';
+
+  // Ресурсы на продажу
+  const sellRes = Object.keys(RESOURCES).filter((k) => !RESOURCES[k].special && (player.resources[k] || 0) > 0)
+    .map((k) => `<div class="mk-sell-row">
+      <span>${RESOURCES[k].icon} ${RESOURCES[k].name} <span class="muted">(есть ${player.resources[k]})</span></span>
+      <input id="mk-qty-${k}" class="mk-input" type="number" min="1" max="${player.resources[k]}" placeholder="кол-во">
+      <input id="mk-price-${k}" class="mk-input" type="number" min="1" placeholder="цена 🪙">
+      <button class="mini" onclick="listResourceLot('${k}')">выставить</button>
+    </div>`).join('') || '<p class="muted">Нет ресурсов для продажи.</p>';
+
+  // Снаряжение из рюкзака (только предметы со слотом)
+  const sellItems = player.inventory.filter((it) => it.slot).map((it) => `<div class="mk-sell-row">
+    <span>${esc(it.name)}</span>
+    <input id="mk-iprice-${it.id}" class="mk-input" type="number" min="1" placeholder="цена 🪙">
+    <button class="mini" onclick="listItemLot(${it.id})">выставить</button>
+  </div>`).join('') || '<p class="muted">В рюкзаке нет снаряжения на продажу.</p>';
+
+  return `<div class="panel">
+    <h2>🏷️ Барахолка</h2>
+    <p class="muted">Продавайте трофеи и ресурсы другим полубогам. Комиссия с продажи — 1%. Выручка приходит при следующей синхронизации.</p>
+    ${!marketLoaded ? '<p class="muted">Загрузка лотов…</p>' : ''}
+
+    <h3>🛒 Купить (${others.length})</h3>
+    <div class="mk-list">${buyHtml}</div>
+
+    <h3>📦 Мои лоты (${mine.length})</h3>
+    <div class="mk-list">${myHtml}</div>
+
+    <h3>🪙 Выставить ресурсы</h3>
+    <div class="mk-sell">${sellRes}</div>
+
+    <h3>⚔️ Выставить снаряжение</h3>
+    <div class="mk-sell">${sellItems}</div>
+  </div>`;
+}
+
 function viewTavern() {
   const gold = player.resources.gold || 0;
   const t = (player.counters && player.counters.tavern) || { plays: 0, won: 0, lost: 0 };

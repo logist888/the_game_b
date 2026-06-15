@@ -329,8 +329,10 @@ async function syncFromCloud() {
     // Extract server-injected meta fields before comparing saves
     const pendingBonus = remote._pendingBonus || 0;
     const remoteRefCount = remote._refCount;
+    const pendingMarketGold = remote._pendingMarketGold || 0;
     delete remote._pendingBonus;
     delete remote._refCount;
+    delete remote._pendingMarketGold;
 
     const local = loadGame();
     if (!local || (remote.lastSaved || 0) > (local.lastSaved || 0)) {
@@ -347,7 +349,13 @@ async function syncFromCloud() {
     }
     if (remoteRefCount != null) player.refCount = remoteRefCount;
 
-    if (pendingBonus || remoteRefCount != null) saveGame();
+    if (pendingMarketGold) {
+      player.resources.gold = (player.resources.gold || 0) + pendingMarketGold;
+      pushLog(`💰 Выручка с барахолки: +${pendingMarketGold} 🪙`);
+      if (typeof showToast === 'function') showToast(`💰 +${pendingMarketGold} 🪙 за проданные лоты!`);
+    }
+
+    if (pendingBonus || remoteRefCount != null || pendingMarketGold) saveGame();
     if (typeof render === 'function') render();
 
     // Новый реферальный игрок: пушим немедленно вместо ожидания 30 с

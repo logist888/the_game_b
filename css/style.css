@@ -279,3 +279,15 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
   padding:.5em .8em; margin:.5em 0; color:var(--gold2); font-weight:600}
 .tavern-row{display:flex; gap:.4em; flex-wrap:wrap; margin:.3em 0}
 .thimble-row{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin:.3em 0}
+
+/* marketplace */
+.mk-list{display:flex; flex-direction:column; gap:.35em; margin:.3em 0 .6em}
+.mk-lot{display:flex; align-items:center; gap:.5em; background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; padding:.4em .6em; font-size:.85rem}
+.mk-lot span:first-child{flex:1}
+.mk-price{color:var(--gold); font-weight:700; white-space:nowrap}
+.mk-sell{display:flex; flex-direction:column; gap:.3em; margin:.3em 0 .6em}
+.mk-sell-row{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; font-size:.82rem}
+.mk-sell-row span:first-child{flex:1; min-width:140px}
+.mk-input{width:90px; background:#1a130c; color:var(--txt); border:1px solid var(--line);
+  border-radius:6px; padding:.3em .4em; font-family:inherit; font-size:.8rem}
