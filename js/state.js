@@ -230,6 +230,11 @@ function equipBonus(stat) {
   return b;
 }
 
+// Итоговое значение стата: база + бонусы надетых вещей + пассивный бонус клана.
+function statTotal(stat) {
+  return player.stats[stat].val + equipBonus(stat) + (player.clanBuff || 0);
+}
+
 function armorTotal() {
   let a = 0;
   ['head','body','shield'].forEach((s) => { if (player.equip[s]) a += player.equip[s].armor || 0; });
