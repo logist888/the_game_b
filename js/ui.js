@@ -159,10 +159,12 @@ function viewStats() {
       else if (it.armor) stat = `${it.armor} броня`;
       else if (it.bonus) stat = Object.entries(it.bonus).map(([k,v])=>`+${v} ${STATS[k]?.name||k}`).join(', ');
     }
-    return `<div class="equip-card ${it ? 'equipped' : 'empty'}">
+    const rar = it && it.rarity && RARITIES[it.rarity];
+    return `<div class="equip-card ${it ? 'equipped' : 'empty'}"${rar ? ` style="border-color:${rar.color}"` : ''}>
       <div class="equip-img">${it ? itemArt(it) : `<span class="equip-empty-icon">${SLOT_ICONS[s]}</span>`}</div>
       <div class="equip-label">${label}</div>
-      ${it ? `<div class="equip-name">${esc(it.name)}</div>
+      ${it ? `<div class="equip-name"${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}</div>
+        ${it.set && GEAR_SETS[it.set] ? `<div class="equip-set">🎽 ${setWorn(it.set)}/${Object.keys(GEAR_SETS[it.set].pieces).length}</div>` : ''}
         ${stat ? `<div class="equip-stat">${stat}</div>` : ''}
         <button class="mini" onclick="unequip('${s}')">снять</button>`
         : `<div class="equip-name muted">пусто</div>`}
@@ -182,6 +184,7 @@ function viewStats() {
         <h3>Магия</h3>${viewMagicMini()}
         <h3>Профессии</h3>${viewProfessions()}
         <h3>Экипировка</h3>${equipHtml}
+        <h3>Сет-бонусы</h3>${setsSummaryHtml()}
         <h3>Сборки экипировки</h3>${loadoutsHtml()}
       </div>
     </div>
@@ -242,13 +245,42 @@ function itemCard(it) {
   if (it.req) stats.push('треб: ' + Object.entries(it.req).map(([k, v]) => `${STATS[k].name} ${v}`).join(', '));
   const action = it.slot ? `<button class="mini" onclick="equipItem(${it.id})">надеть</button>`
     : (it.use && !it.use.throwDmg && !it.use.heal && !it.use.mana ? '' : `<span class="muted">в бою</span>`);
-  return `<div class="item-card ${it.type}">
+  const rar = it.rarity && RARITIES[it.rarity];
+  const rarStyle = rar ? ` style="border-left-color:${rar.color}"` : '';
+  const rarTag = rar ? ` <span class="rar-tag" style="color:${rar.color}">${rar.name}</span>` : '';
+  const set = it.set && GEAR_SETS[it.set];
+  const setLine = set ? `<div class="ic-set">🎽 ${esc(set.name)} (${setWorn(it.set)}/${Object.keys(set.pieces).length})</div>` : '';
+  return `<div class="item-card ${it.type}${rar ? ' rar' : ''}"${rarStyle}>
     <div class="ic-art">${itemArt(it)}</div>
-    <div class="ic-head"><b>${esc(it.name)}</b>${it.qty ? ` ×${it.qty}` : ''}</div>
+    <div class="ic-head"><b${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}</b>${it.qty ? ` ×${it.qty}` : ''}${rarTag}</div>
     <div class="ic-type">${it.type}</div>
+    ${setLine}
     <div class="ic-stats">${stats.filter(Boolean).join(' · ')}</div>
     <div class="ic-act">${action} <button class="mini danger" onclick="dropItem(${it.id})">×</button></div>
   </div>`;
+}
+
+// Сколько частей данного сета сейчас надето.
+function setWorn(setId) {
+  return Object.values(player.equip).filter((it) => it && it.set === setId).length;
+}
+
+// Сводка по сет-бонусам надетых комплектов (для Покоев героя).
+function setsSummaryHtml() {
+  const counts = {};
+  Object.values(player.equip).forEach((it) => { if (it && it.set) counts[it.set] = (counts[it.set] || 0) + 1; });
+  const ids = Object.keys(counts);
+  if (!ids.length) return '<p class="muted">Собери предметы одного класса (напр. «Звёздный аркан») — за надетые части дают сет-бонусы.</p>';
+  return ids.map((id) => {
+    const set = GEAR_SETS[id];
+    const n = counts[id];
+    const total = Object.keys(set.pieces).length;
+    const tiers = [['2', 2], ['4', 4], ['full', total]].filter(([k]) => set.bonuses[k]).map(([k, need]) => {
+      const on = n >= need;
+      return `<div class="set-bonus ${on ? 'on' : ''}">${on ? '✅' : '🔒'} <b>(${need === total ? 'полный' : need})</b> ${esc(set.bonuses[k].desc)}</div>`;
+    }).join('');
+    return `<div class="set-block"><div class="set-title">${set.icon} ${esc(set.name)} <span class="muted">${set.class} · ${n}/${total}</span></div>${tiers}</div>`;
+  }).join('');
 }
 
 // ---------------- Лестница в Небо: выбор похода ----------------

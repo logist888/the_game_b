@@ -342,6 +342,140 @@ const RECIPES = [
 ];
 
 // ----------------------------------------------------------------------------
+// РАРНОСТЬ ПРЕДМЕТОВ (множит статы выпавшей вещи)
+// Чем выше уровень героя и сложность похода, тем выше шанс редких рарностей.
+// ----------------------------------------------------------------------------
+const RARITIES = {
+  common:    { name:'Обычный',     color:'#9c8c74', mult:1.00, weight:50 },
+  uncommon:  { name:'Необычный',   color:'#6fa84f', mult:1.20, weight:30 },
+  rare:      { name:'Редкий',      color:'#4f8fd9', mult:1.45, weight:14 },
+  epic:      { name:'Эпический',   color:'#a965d9', mult:1.75, weight:5 },
+  legendary: { name:'Легендарный', color:'#f0a94a', mult:2.10, weight:1.5 },
+  mythic:    { name:'Мифический',  color:'#e0503a', mult:2.60, weight:0.4 },
+};
+const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic'];
+
+// ----------------------------------------------------------------------------
+// КЛАССОВЫЕ КОМПЛЕКТЫ (сеты). Каждый сет — предметы одного класса по слотам.
+// Любой предмет сета может выпасть любой рарности (рарность множит статы).
+// Сет-бонус даётся за число надетых частей (2 / 4 / полный), независимо от рарности.
+// minTier — с какого мира начинают падать части сета.
+// ----------------------------------------------------------------------------
+const GEAR_SETS = {
+  // ----- МАГ -----
+  arcane: { name:'Звёздный аркан', class:'Маг', icon:'🌟', minTier:3,
+    pieces: {
+      weapon: { name:'Посох звёздного аркана', slot:'weapon', type:'оружие', hands:2, dist:'средняя', dmg:[8,16], req:{int:14}, weight:4, bonus:{ int:6, fai:2 } },
+      head:   { name:'Венец звездочёта', slot:'head', type:'броня', armorType:'лёгкая', armor:4, weight:2, req:{int:8}, bonus:{ int:3 } },
+      body:   { name:'Мантия созвездий', slot:'body', type:'броня', armorType:'лёгкая', armor:7, weight:3, req:{int:10}, bonus:{ int:5, fai:2 } },
+      amulet: { name:'Амулет небосвода', slot:'amulet', type:'бижутерия', weight:0, bonus:{ fai:5, int:3 } },
+      ring:   { name:'Перстень звездочёта', slot:'ring', type:'бижутерия', weight:0, bonus:{ int:4 } },
+    },
+    bonuses: {
+      '2':    { spellPct:12, desc:'+12% сила заклинаний' },
+      '4':    { mpRegenFlat:6, add:{ int:4 }, desc:'+6 реген маны, +4 Интеллект' },
+      'full': { spellPct:18, mpFlat:60, desc:'+18% сила заклинаний и +60 макс. маны' },
+    } },
+  // ----- ВОИН -----
+  warlord: { name:'Гнев Вавилона', class:'Воин', icon:'⚔️', minTier:2,
+    pieces: {
+      weapon: { name:'Клинок Вавилона', slot:'weapon', type:'оружие', hands:1, dist:'ближняя', dmg:[10,20], req:{str:12}, weight:4, bonus:{ str:4 } },
+      head:   { name:'Шлем владыки', slot:'head', type:'броня', armorType:'тяжёлая', armor:8, weight:6, req:{str:8}, bonus:{ str:2, end:2 } },
+      body:   { name:'Латы владыки', slot:'body', type:'броня', armorType:'тяжёлая', armor:16, weight:12, req:{str:12}, bonus:{ end:4 } },
+      shield: { name:'Щит Вавилона', slot:'shield', type:'броня', armorType:'тяжёлая', armor:10, weight:10, req:{str:8}, bonus:{ end:3 } },
+      ring:   { name:'Печать воина', slot:'ring', type:'бижутерия', weight:0, bonus:{ str:4, end:2 } },
+    },
+    bonuses: {
+      '2':    { dmgPct:8, desc:'+8% урон в ближнем бою' },
+      '4':    { armorFlat:12, add:{ end:4 }, desc:'+12 брони, +4 Выносливости' },
+      'full': { dmgPct:12, physCritFlat:8, desc:'+12% урон и +8% физ. крит' },
+    } },
+  // ----- БЕРСЕРК -----
+  berserk: { name:'Кровавая жатва', class:'Берсерк', icon:'🩸', minTier:4,
+    pieces: {
+      weapon: { name:'Секира кровавой жатвы', slot:'weapon', type:'оружие', hands:2, dist:'ближняя', dmg:[16,30], req:{str:16}, weight:10, bonus:{ fur:4, str:3 } },
+      head:   { name:'Шлем ярости', slot:'head', type:'броня', armorType:'средняя', armor:6, weight:4, req:{str:10}, bonus:{ fur:3 } },
+      body:   { name:'Доспех берсерка', slot:'body', type:'броня', armorType:'средняя', armor:10, weight:7, req:{str:12}, bonus:{ fur:3, str:2 } },
+      earring:{ name:'Серьга бешенства', slot:'earring', type:'бижутерия', weight:0, bonus:{ fur:5 } },
+      ring:   { name:'Кольцо неистовства', slot:'ring', type:'бижутерия', weight:0, bonus:{ fur:3, str:3 } },
+    },
+    bonuses: {
+      '2':    { physCritFlat:10, desc:'+10% физ. крит' },
+      '4':    { maxDmgFlat:12, add:{ fur:4 }, desc:'+12% шанс макс. урона, +4 Ярости' },
+      'full': { dmgPct:22, armorFlat:-8, desc:'+22% урон, но −8 брони (риск/награда)' },
+    } },
+  // ----- ЛУЧНИК -----
+  ranger: { name:'Шёпот ветра', class:'Лучник', icon:'🍃', minTier:3,
+    pieces: {
+      weapon: { name:'Лук шёпота ветра', slot:'weapon', type:'оружие', hands:2, dist:'дальняя', dmg:[12,24], req:{agi:14}, weight:3, bonus:{ agi:4, luk:2 } },
+      head:   { name:'Капюшон следопыта', slot:'head', type:'броня', armorType:'лёгкая', armor:4, weight:2, req:{agi:8}, bonus:{ agi:3 } },
+      body:   { name:'Куртка следопыта', slot:'body', type:'броня', armorType:'средняя', armor:8, weight:5, req:{agi:10}, bonus:{ agi:3, luk:2 } },
+      earring:{ name:'Серьга ветра', slot:'earring', type:'бижутерия', weight:0, bonus:{ agi:4, luk:2 } },
+      ring:   { name:'Кольцо меткости', slot:'ring', type:'бижутерия', weight:0, bonus:{ agi:4 } },
+    },
+    bonuses: {
+      '2':    { dmgPct:10, desc:'+10% урон в дальнем бою' },
+      '4':    { physCounterFlat:8, add:{ agi:4 }, desc:'+8% уклонение, +4 Ловкости' },
+      'full': { lootFlat:40, maxDmgFlat:10, desc:'+большой шанс ценного трофея и +10% макс. урон' },
+    } },
+  // ----- ТАНК -----
+  guardian: { name:'Несокрушимый бастион', class:'Танк', icon:'🛡', minTier:4,
+    pieces: {
+      weapon: { name:'Молот стража', slot:'weapon', type:'оружие', hands:1, dist:'ближняя', dmg:[8,16], req:{str:10,end:8}, weight:8, bonus:{ end:3 } },
+      head:   { name:'Шлем бастиона', slot:'head', type:'броня', armorType:'тяжёлая', armor:10, weight:7, req:{end:8}, bonus:{ end:3, rea:2 } },
+      body:   { name:'Латы бастиона', slot:'body', type:'броня', armorType:'тяжёлая', armor:20, weight:14, req:{end:12}, bonus:{ end:5 } },
+      shield: { name:'Башенный щит', slot:'shield', type:'броня', armorType:'тяжёлая', armor:14, weight:14, req:{str:10}, bonus:{ end:3, ref:2 } },
+      amulet: { name:'Амулет твердыни', slot:'amulet', type:'бижутерия', weight:0, bonus:{ end:5, rea:3 } },
+    },
+    bonuses: {
+      '2':    { hpFlat:80, desc:'+80 макс. HP' },
+      '4':    { armorFlat:16, add:{ rea:4 }, desc:'+16 брони, +4 Реакции' },
+      'full': { physCounterFlat:15, magCounterFlat:15, desc:'+15% физ. и маг. контрудар' },
+    } },
+  // ----- АССАСИН -----
+  assassin: { name:'Тень Зиккурата', class:'Ассасин', icon:'🗡', minTier:3,
+    pieces: {
+      weapon: { name:'Клинок теней', slot:'weapon', type:'оружие', hands:1, dist:'ближняя', dmg:[9,18], req:{agi:12}, weight:2, bonus:{ agi:3, fur:2 } },
+      head:   { name:'Маска зиккурата', slot:'head', type:'броня', armorType:'лёгкая', armor:3, weight:2, req:{agi:8}, bonus:{ agi:3 } },
+      body:   { name:'Облачение теней', slot:'body', type:'броня', armorType:'лёгкая', armor:6, weight:3, req:{agi:10}, bonus:{ agi:3, luk:2 } },
+      ring:   { name:'Кольцо убийцы', slot:'ring', type:'бижутерия', weight:0, bonus:{ fur:3, luk:2 } },
+      earring:{ name:'Серьга тени', slot:'earring', type:'бижутерия', weight:0, bonus:{ agi:3, luk:2 } },
+    },
+    bonuses: {
+      '2':    { physCritFlat:10, desc:'+10% физ. крит' },
+      '4':    { physCounterFlat:10, add:{ agi:4 }, desc:'+10% уклонение, +4 Ловкости' },
+      'full': { physCritFlat:15, maxDmgFlat:10, desc:'+15% физ. крит и +10% макс. урон' },
+    } },
+  // ----- ПАЛАДИН (эндгейм) -----
+  paladin: { name:'Длань Небес', class:'Паладин', icon:'✨', minTier:9,
+    pieces: {
+      weapon: { name:'Булава небес', slot:'weapon', type:'оружие', hands:1, dist:'ближняя', dmg:[14,26], req:{str:16,fai:10}, weight:8, bonus:{ str:4, fai:3 } },
+      head:   { name:'Венец паладина', slot:'head', type:'броня', armorType:'тяжёлая', armor:10, weight:7, req:{str:12}, bonus:{ fai:3, end:2 } },
+      body:   { name:'Латы небес', slot:'body', type:'броня', armorType:'тяжёлая', armor:22, weight:14, req:{str:16,fai:8}, bonus:{ str:4, fai:3 } },
+      shield: { name:'Эгида небес', slot:'shield', type:'броня', armorType:'тяжёлая', armor:14, weight:12, req:{str:12}, bonus:{ fai:4, end:3 } },
+      amulet: { name:'Реликвия небес', slot:'amulet', type:'бижутерия', weight:0, bonus:{ fai:6, int:3 } },
+    },
+    bonuses: {
+      '2':    { magCritFlat:12, desc:'+12% маг. крит' },
+      '4':    { hpFlat:80, add:{ fai:5, str:3 }, desc:'+80 HP, +5 Веры, +3 Силы' },
+      'full': { dmgPct:15, hpRegenFlat:8, desc:'+15% урон и +8 реген HP (исцеление аурой)' },
+    } },
+};
+
+// Создать конкретный предмет сета заданной рарности (рарность множит статы).
+function makeSetItem(setId, slot, rarityKey) {
+  const set = GEAR_SETS[setId];
+  const it = JSON.parse(JSON.stringify(set.pieces[slot]));
+  const m = (RARITIES[rarityKey] || RARITIES.common).mult;
+  if (it.dmg) it.dmg = [Math.max(1, Math.round(it.dmg[0] * m)), Math.max(2, Math.round(it.dmg[1] * m))];
+  if (it.armor) it.armor = Math.max(1, Math.round(it.armor * m));
+  if (it.bonus) Object.keys(it.bonus).forEach((k) => { it.bonus[k] = Math.max(1, Math.round(it.bonus[k] * m)); });
+  it.set = setId; it.setName = set.name; it.rarity = rarityKey;
+  it.durability = [1000, 1000];
+  return it;
+}
+
+// ----------------------------------------------------------------------------
 // ЗДАНИЯ ВАВИЛОНСКОЙ БАШНИ (раздел «Техзадание» → Вавилонская башня)
 // ----------------------------------------------------------------------------
 const TOWER_BUILDINGS = [

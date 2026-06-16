@@ -194,9 +194,12 @@ function recalc() {
   // 3 участника, максимум +4. Берётся из кэша player.clan (обновляется с сервера).
   const clanBuff = player.clan && player.clan.size ? Math.min(4, Math.floor(player.clan.size / 3)) : 0;
   player.clanBuff = clanBuff;
-  const v = (k) => player.stats[k].val + equipBonus(k) + clanBuff;
-  const maxHp = 100 + v('end') * 5;
-  const maxMp = 20 + v('int') * 5;
+  // активные сет-бонусы (по числу надетых частей одного комплекта)
+  const setInfo = computeSetInfo();
+  player.setInfo = setInfo;
+  const v = (k) => player.stats[k].val + equipBonus(k) + clanBuff + (setInfo.addStats[k] || 0);
+  const maxHp = 100 + v('end') * 5 + (setInfo.mods.hpFlat || 0);
+  const maxMp = 20 + v('int') * 5 + (setInfo.mods.mpFlat || 0);
   player.maxHp = maxHp;
   player.maxMp = maxMp;
   if (player.hp === 0 || player.hp > maxHp) player.hp = maxHp;
@@ -225,9 +228,50 @@ function recalc() {
     weaponDist: weapon ? weapon.dist : 'ближняя',
     carry: v('str') * 5 + v('end') * 2,
   };
+  // применяем модификаторы сет-бонусов к боевым параметрам
+  applySetMods(player.derived, setInfo.mods);
   // уровень героя = сумма статов / 5 (грубая агрегация)
   player.level = Math.max(1, Math.floor(STAT_ORDER.reduce((a, k) => a + player.stats[k].val, 0) / 9));
   player.danger = player.level;
+}
+
+// Считаем, сколько частей каждого сета надето, и собираем суммарные бонусы.
+function computeSetInfo() {
+  const counts = {};
+  Object.values(player.equip).forEach((it) => { if (it && it.set) counts[it.set] = (counts[it.set] || 0) + 1; });
+  const addStats = {}; const mods = {}; const tiers = {};
+  Object.entries(counts).forEach(([setId, n]) => {
+    const set = GEAR_SETS[setId];
+    if (!set) return;
+    const total = Object.keys(set.pieces).length;
+    tiers[setId] = [];
+    [['2', 2], ['4', 4], ['full', total]].forEach(([key, need]) => {
+      const b = set.bonuses[key];
+      if (!b || n < need) return;
+      tiers[setId].push(key);
+      if (b.add) Object.entries(b.add).forEach(([k, x]) => { addStats[k] = (addStats[k] || 0) + x; });
+      ['dmgPct','spellPct','armorFlat','physCritFlat','magCritFlat','physCounterFlat','magCounterFlat','hpFlat','mpFlat','hpRegenFlat','mpRegenFlat','lootFlat','maxDmgFlat'].forEach((f) => {
+        if (b[f]) mods[f] = (mods[f] || 0) + b[f];
+      });
+    });
+  });
+  return { counts, addStats, mods, tiers };
+}
+
+// Применяем флаговые модификаторы сетов к производным боевым параметрам.
+function applySetMods(d, m) {
+  if (!d || !m) return;
+  if (m.dmgPct) { d.dmgMin = Math.max(1, Math.round(d.dmgMin * (1 + m.dmgPct / 100))); d.dmgMax = Math.max(2, Math.round(d.dmgMax * (1 + m.dmgPct / 100))); }
+  if (m.spellPct) d.spellMult += m.spellPct / 100;
+  if (m.armorFlat) d.armor = Math.max(0, d.armor + m.armorFlat);
+  if (m.physCritFlat) d.physCrit = Math.min(95, d.physCrit + m.physCritFlat);
+  if (m.magCritFlat) d.magCrit = Math.min(95, d.magCrit + m.magCritFlat);
+  if (m.physCounterFlat) d.physCounter = Math.min(75, d.physCounter + m.physCounterFlat);
+  if (m.magCounterFlat) d.magCounter = Math.min(75, d.magCounter + m.magCounterFlat);
+  if (m.hpRegenFlat) d.hpRegen += m.hpRegenFlat;
+  if (m.mpRegenFlat) d.mpRegen += m.mpRegenFlat;
+  if (m.lootFlat) d.lootBonus += m.lootFlat;
+  if (m.maxDmgFlat) d.maxDmgChance = Math.min(90, d.maxDmgChance + m.maxDmgFlat);
 }
 
 function equipBonus(stat) {
