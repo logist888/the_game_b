@@ -164,10 +164,10 @@ function viewStats() {
     return `<div class="equip-card ${it ? 'equipped' : 'empty'}"${rar ? ` style="border-color:${rar.color}"` : ''}>
       <div class="equip-img">${it ? itemArt(it) : `<span class="equip-empty-icon">${SLOT_ICONS[s]}</span>`}</div>
       <div class="equip-label">${label}</div>
-      ${it ? `<div class="equip-name"${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}</div>
+      ${it ? `<div class="equip-name"${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}${plusLabel(it)}</div>
         ${it.set && GEAR_SETS[it.set] ? `<div class="equip-set">🎽 ${setWorn(it.set)}/${Object.keys(GEAR_SETS[it.set].pieces).length}</div>` : ''}
         ${stat ? `<div class="equip-stat">${stat}</div>` : ''}
-        <button class="mini" onclick="unequip('${s}')">снять</button>`
+        <div class="equip-acts">${enhanceBtn(it)} <button class="mini" onclick="unequip('${s}')">снять</button></div>`
         : `<div class="equip-name muted">пусто</div>`}
     </div>`;
   }).join('')}</div>`;
@@ -253,12 +253,21 @@ function itemCard(it) {
   const setLine = set ? `<div class="ic-set">🎽 ${esc(set.name)} (${setWorn(it.set)}/${Object.keys(set.pieces).length})</div>` : '';
   return `<div class="item-card ${it.type}${rar ? ' rar' : ''}"${rarStyle}>
     <div class="ic-art">${itemArt(it)}</div>
-    <div class="ic-head"><b${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}</b>${it.qty ? ` ×${it.qty}` : ''}${rarTag}</div>
+    <div class="ic-head"><b${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}${plusLabel(it)}</b>${it.qty ? ` ×${it.qty}` : ''}${rarTag}</div>
     <div class="ic-type">${it.type}</div>
     ${setLine}
     <div class="ic-stats">${stats.filter(Boolean).join(' · ')}</div>
-    <div class="ic-act">${action} <button class="mini danger" onclick="dropItem(${it.id})">×</button></div>
+    <div class="ic-act">${action} ${enhanceBtn(it)} <button class="mini danger" onclick="dropItem(${it.id})">×</button></div>
   </div>`;
+}
+
+// метка уровня заточки и кнопка заточки
+function plusLabel(it) { return it.plus ? ` <span class="plus-tag">+${it.plus}</span>` : ''; }
+function enhanceBtn(it) {
+  if (!it.slot) return '';
+  const plus = it.plus || 0;
+  if (plus >= ENHANCE_MAX) return '<span class="muted">+10 макс</span>';
+  return `<button class="mini" title="Заточка до +${plus + 1}: ${costLabel(enhanceCost(plus))}" onclick="enhanceItem(${it.id})">⚒️ +${plus + 1}</button>`;
 }
 
 // Сколько частей данного сета сейчас надето.
