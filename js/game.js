@@ -257,6 +257,62 @@ function playLottery() {
   render();
 }
 
+// --- Нижний мир: пассивная добыча смертными (раздел GDD «нижний мир») ---
+// Множитель добычи всех шахт от уровня Города (+5% за уровень).
+function lowerCityMult() { return 1 + (player.lowerWorld.buildings.city || 0) * 0.05; }
+// Добыча постройки в час на текущем уровне.
+function lowerProdPerHour(key) {
+  const lvl = player.lowerWorld.buildings[key] || 0;
+  const b = LOWER_BUILDINGS[key];
+  if (!lvl) return 0;
+  return b.res === 'gold' ? b.base * lvl : Math.round(b.base * lvl * lowerCityMult());
+}
+// Сколько часов накоплено с последнего сбора (с потолком LOWER_CAP_HOURS).
+function lowerElapsedHours() {
+  const last = player.lowerWorld.lastCollect || Date.now();
+  return Math.min(LOWER_CAP_HOURS, Math.max(0, (Date.now() - last) / 3600000));
+}
+// Готовый к сбору урожай по ресурсам.
+function lowerPending() {
+  const hours = lowerElapsedHours();
+  const out = {};
+  LOWER_ORDER.forEach((k) => {
+    const amt = Math.floor(lowerProdPerHour(k) * hours);
+    if (amt > 0) { const res = LOWER_BUILDINGS[k].res; out[res] = (out[res] || 0) + amt; }
+  });
+  return out;
+}
+function collectLower() {
+  const pending = lowerPending();
+  const entries = Object.entries(pending);
+  if (!entries.length) { pushLog('🏘️ Пока нечего собирать — смертные ещё трудятся.'); render(); return; }
+  entries.forEach(([res, qty]) => addRes(res, qty));
+  player.lowerWorld.lastCollect = Date.now();
+  const str = entries.map(([res, qty]) => `${qty} ${RESOURCES[res].icon}`).join(', ');
+  pushLog(`🏘️ Собран урожай нижнего мира: ${str}.`);
+  if (typeof showToast === 'function') showToast(`🏘️ Собрано: ${str}`);
+  checkQuests();
+  render();
+}
+// Стоимость улучшения постройки (золото, квадратичный рост).
+function upgradeLowerCost(key) {
+  const lvl = player.lowerWorld.buildings[key] || 0;
+  return 150 * (lvl + 1) * (lvl + 1);
+}
+function upgradeLower(key) {
+  if (!LOWER_BUILDINGS[key]) return;
+  const cost = upgradeLowerCost(key);
+  if (!hasRes('gold', cost)) { pushLog('🪙 Недостаточно золота на постройку.'); render(); return; }
+  // при улучшении сначала фиксируем накопленный урожай, чтобы не потерять
+  const pending = lowerPending();
+  Object.entries(pending).forEach(([res, qty]) => addRes(res, qty));
+  if (Object.keys(pending).length) player.lowerWorld.lastCollect = Date.now();
+  spendRes('gold', cost);
+  player.lowerWorld.buildings[key] = (player.lowerWorld.buildings[key] || 0) + 1;
+  pushLog(`🏗️ ${LOWER_BUILDINGS[key].name} улучшен до уровня ${player.lowerWorld.buildings[key]} за ${cost} 🪙.`);
+  render();
+}
+
 // --- Походы: выбор мира → локации → бой ---
 function startExpedition(worldIdx, locIdx, difficulty) {
   const world = WORLDS[worldIdx];

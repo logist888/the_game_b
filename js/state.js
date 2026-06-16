@@ -39,6 +39,8 @@ function newPlayer(name) {
     quests: {},
     visitedLocations: [],
     counters: { kills:0, gathered:0, crafted:0, expeditions:0, bossKills:0 },
+    // нижний мир: уровни построек смертных + время последнего сбора
+    lowerWorld: { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() },
     lastTick: Date.now(),
     log: [],
     refCount: 0,
@@ -180,6 +182,10 @@ function recalc() {
   if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
   if (!player.counters) player.counters = { kills: player.kills || 0, gathered: player.gathered || 0, crafted: player.crafted || 0, expeditions: player.expeditions || 0, bossKills: 0 };
   if (player.counters.bossKills == null) player.counters.bossKills = 0;
+  if (!player.lowerWorld) player.lowerWorld = { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() };
+  if (!player.lowerWorld.buildings) player.lowerWorld.buildings = { city:1, sawmill:1, quarry:1, mine:1, farm:1 };
+  LOWER_ORDER.forEach((k) => { if (player.lowerWorld.buildings[k] == null) player.lowerWorld.buildings[k] = 1; });
+  if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
   if (!player.professions) player.professions = {};
   PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
   // Пассивный бонус клана («клановый артефакт»): +1 ко всем статам за каждые
