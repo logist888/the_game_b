@@ -185,6 +185,52 @@ function craftSetPiece(setId, slot) {
   saveGame();
   render();
 }
+// --- Заточка снаряжения (+1..+10): усиливает статы предмета ---
+const ENHANCE_MAX = 10;
+function enhanceCost(plus) {
+  const n = plus + 1; // целевой уровень
+  const cost = { sparks: 40 * n, res: {} };
+  if (n <= 3) cost.res = { metal: n, stone: n * 2 };
+  else if (n <= 6) cost.res = { metal: n, gem: n - 2 };
+  else cost.res = { metal: n, dragonScale: n - 5 };
+  if (n >= 9) cost.souls = 1;
+  return cost;
+}
+// пересчитать статы предмета из базового снимка по уровню заточки (+6%/ур.)
+function recomputeEnhanced(it) {
+  if (!it.baseStats) return;
+  const f = 1 + 0.06 * (it.plus || 0);
+  if (it.baseStats.dmg) it.dmg = it.baseStats.dmg.map((d) => Math.max(1, Math.round(d * f)));
+  if (it.baseStats.armor != null) it.armor = Math.max(1, Math.round(it.baseStats.armor * f));
+  if (it.baseStats.bonus) { it.bonus = {}; Object.entries(it.baseStats.bonus).forEach(([k, v]) => { it.bonus[k] = Math.max(1, Math.round(v * f)); }); }
+}
+function findOwnedItem(itemId) {
+  return player.inventory.find((x) => x.id === itemId) || Object.values(player.equip).find((x) => x && x.id === itemId) || null;
+}
+function enhanceItem(itemId) {
+  const it = findOwnedItem(itemId);
+  if (!it || !it.slot) return;
+  const plus = it.plus || 0;
+  if (plus >= ENHANCE_MAX) { pushLog(`❌ Максимальная заточка (+${ENHANCE_MAX}).`); render(); return; }
+  const cost = enhanceCost(plus);
+  if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для заточки.'); render(); return; }
+  payCost(cost);
+  if (!it.baseStats) {
+    it.baseStats = {
+      dmg: it.dmg ? [...it.dmg] : null,
+      armor: it.armor != null ? it.armor : null,
+      bonus: it.bonus ? { ...it.bonus } : null,
+    };
+  }
+  it.plus = plus + 1;
+  recomputeEnhanced(it);
+  recalc();
+  pushLog(`⚒️ Заточка: ${it.name} +${it.plus}!`);
+  checkAchievements();
+  saveGame();
+  render();
+}
+
 function reforgeItem(itemId) {
   const i = player.inventory.findIndex((x) => x.id === itemId);
   if (i < 0) return;
@@ -198,10 +244,17 @@ function reforgeItem(itemId) {
   payCost(cost);
   const fresh = makeSetItem(it.set, it.slot, target);
   fresh.id = it.id; // сохраняем тот же id
+  // переносим уровень заточки на новую (более редкую) базу
+  if (it.plus) {
+    fresh.baseStats = { dmg: fresh.dmg ? [...fresh.dmg] : null, armor: fresh.armor != null ? fresh.armor : null, bonus: fresh.bonus ? { ...fresh.bonus } : null };
+    fresh.plus = it.plus;
+    recomputeEnhanced(fresh);
+  }
   player.inventory[i] = fresh;
   recordCodex(fresh);
+  recalc();
   gainProfXp('jewelry', 6);
-  pushLog(`🔨 Перековка: ${fresh.name} → [${RARITIES[target].name}]!`);
+  pushLog(`🔨 Перековка: ${fresh.name}${fresh.plus ? ` +${fresh.plus}` : ''} → [${RARITIES[target].name}]!`);
   saveGame();
   render();
 }

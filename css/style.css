@@ -374,3 +374,7 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .ach.locked .ach-name{color:var(--muted)}
 .ach-desc{font-size:.76rem; color:var(--muted)}
 .ach-reward{font-size:.74rem; color:#6fa84f; margin-top:.15em}
+
+/* заточка предметов */
+.plus-tag{color:#f0c469; font-weight:800}
+.equip-acts{display:flex; gap:.25em; justify-content:center; flex-wrap:wrap}
