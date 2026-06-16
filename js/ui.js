@@ -1104,8 +1104,29 @@ function viewCouncil() {
     ${_refSectionHtml()}
     <p class="muted">Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).</p>
     ${rows}
+    <h3>🏆 Достижения ${achievementsCountHtml()}</h3>
+    ${achievementsHtml()}
     <button class="mini danger" onclick="if(confirm('Сбросить весь прогресс?')){resetGame();render();}">Начать заново</button>
   </div>`;
+}
+
+function achievementsCountHtml() {
+  const got = (player.achievements || []).length;
+  return `<span class="muted">${got} / ${ACHIEVEMENTS.length}</span>`;
+}
+function achievementsHtml() {
+  return `<div class="ach-grid">${ACHIEVEMENTS.map((a) => {
+    const got = (player.achievements || []).includes(a.id);
+    const reward = a.reward ? Object.entries(a.reward).map(([k, v]) => `${v} ${RESOURCES[k].icon}`).join(' ') : '';
+    return `<div class="ach ${got ? 'got' : 'locked'}">
+      <div class="ach-ic">${got ? a.icon : '🔒'}</div>
+      <div class="ach-body">
+        <div class="ach-name">${esc(a.name)} ${got ? '✅' : ''}</div>
+        <div class="ach-desc">${esc(a.desc)}</div>
+        ${reward ? `<div class="ach-reward">Награда: ${reward}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function _refSectionHtml() {

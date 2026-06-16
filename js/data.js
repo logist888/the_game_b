@@ -462,6 +462,43 @@ const GEAR_SETS = {
     } },
 };
 
+// ----------------------------------------------------------------------------
+// ДОСТИЖЕНИЯ (пассивные вехи; награда выдаётся один раз при разблокировке)
+// check(p) — предикат от объекта игрока.
+// ----------------------------------------------------------------------------
+const _acMaxRarity = (p) => {
+  let best = -1;
+  Object.values(p.codex || {}).forEach((slots) => Object.values(slots).forEach((rk) => {
+    const i = RARITY_ORDER.indexOf(rk); if (i > best) best = i;
+  }));
+  return best;
+};
+const _acFullSet = (p) => Object.keys(GEAR_SETS).some((id) => p.codex && p.codex[id]
+  && Object.keys(p.codex[id]).length >= Object.keys(GEAR_SETS[id].pieces).length);
+
+const ACHIEVEMENTS = [
+  { id:'first_blood', icon:'🩸', name:'Первая кровь', desc:'Убей первого моба.', reward:{ sparks:20 }, check:(p) => p.counters.kills >= 1 },
+  { id:'slayer',      icon:'⚔️', name:'Истребитель',  desc:'Убей 100 мобов.',  reward:{ sparks:100 }, check:(p) => p.counters.kills >= 100 },
+  { id:'executioner', icon:'💀', name:'Палач',        desc:'Убей 1000 мобов.', reward:{ souls:1 },     check:(p) => p.counters.kills >= 1000 },
+  { id:'boss1',  icon:'🐲', name:'Гроза боссов',  desc:'Победи первого босса.', reward:{ sparks:50 }, check:(p) => (p.counters.bossKills || 0) >= 1 },
+  { id:'boss10', icon:'🐉', name:'Драконоборец',  desc:'Победи 10 боссов.',     reward:{ souls:1 },   check:(p) => (p.counters.bossKills || 0) >= 10 },
+  { id:'gatherer', icon:'⛏️', name:'Старатель', desc:'Добудь 200 ресурсов своими руками.', reward:{ sparks:80 }, check:(p) => p.counters.gathered >= 200 },
+  { id:'smith',    icon:'🔨', name:'Кузнец',    desc:'Создай 50 предметов.',                reward:{ sparks:100 }, check:(p) => p.counters.crafted >= 50 },
+  { id:'traveler', icon:'🪜', name:'Странник',  desc:'Соверши 25 походов.',                 reward:{ sparks:80 },  check:(p) => (p.counters.expeditions || 0) >= 25 },
+  { id:'explorer', icon:'🗺️', name:'Первопроходец', desc:'Побывай в 30 локациях.',         reward:{ souls:1 },    check:(p) => (p.visitedLocations || []).length >= 30 },
+  { id:'duelist',  icon:'🤺', name:'Дуэлянт',   desc:'Победи 10 игроков на Арене.',         reward:{ sparks:150 }, check:(p) => (p.pvp ? p.pvp.wins : 0) >= 10 },
+  { id:'archmage', icon:'✨', name:'Архимаг',   desc:'Изучи все 12 заклинаний.',            reward:{ souls:1 },    check:(p) => p.spells.length >= 12 },
+  { id:'lvl10', icon:'🎖', name:'Восхождение', desc:'Достигни 10 уровня.', reward:{ sparks:100 }, check:(p) => p.xpLevel >= 10 },
+  { id:'lvl25', icon:'🌟', name:'Полубог',     desc:'Достигни 25 уровня.', reward:{ souls:1 },    check:(p) => p.xpLevel >= 25 },
+  { id:'lvl50', icon:'👑', name:'Владыка',     desc:'Достигни 50 уровня.', reward:{ souls:3 },    check:(p) => p.xpLevel >= 50 },
+  { id:'rich',  icon:'🪙', name:'Богач',       desc:'Накопи 10 000 золота.', reward:{ sparks:200 }, check:(p) => (p.resources.gold || 0) >= 10000 },
+  { id:'dresser', icon:'🎒', name:'Модник',    desc:'Сохрани сборку экипировки.', reward:{ sparks:30 }, check:(p) => (p.loadouts || []).length >= 1 },
+  { id:'collector', icon:'🎽', name:'Коллекционер', desc:'Собери полный комплект любого сета.', reward:{ souls:1 }, check:_acFullSet },
+  { id:'archivist', icon:'🗂️', name:'Архивариус', desc:'Открой в Кодексе все 7 сетов.', reward:{ souls:2 }, check:(p) => Object.keys(GEAR_SETS).every((id) => p.codex && p.codex[id]) },
+  { id:'legend', icon:'🟠', name:'Прикосновение легенды', desc:'Найди предмет легендарной рарности.', reward:{ souls:1 }, check:(p) => _acMaxRarity(p) >= RARITY_ORDER.indexOf('legendary') },
+  { id:'mythic', icon:'🔴', name:'Миф во плоти', desc:'Найди предмет мифической рарности.', reward:{ souls:2 }, check:(p) => _acMaxRarity(p) >= RARITY_ORDER.indexOf('mythic') },
+];
+
 // Создать конкретный предмет сета заданной рарности (рарность множит статы).
 function makeSetItem(setId, slot, rarityKey) {
   const set = GEAR_SETS[setId];

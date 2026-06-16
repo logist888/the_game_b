@@ -42,6 +42,7 @@ function newPlayer(name) {
     // нижний мир: уровни построек смертных + время последнего сбора
     lowerWorld: { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() },
     loadouts: [],         // сохранённые сборки экипировки (пресеты)
+    achievements: [],     // id разблокированных достижений
     codex: {},            // кодекс коллекции сетов: setId -> { slot: лучшая рарность }
     lastTick: Date.now(),
     log: [],
@@ -189,6 +190,7 @@ function recalc() {
   LOWER_ORDER.forEach((k) => { if (player.lowerWorld.buildings[k] == null) player.lowerWorld.buildings[k] = 1; });
   if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
   if (!player.loadouts) player.loadouts = [];
+  if (!player.achievements) player.achievements = [];
   if (!player.codex) {
     // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке
     player.codex = {};
