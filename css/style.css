@@ -355,3 +355,10 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .cp-name{font-weight:700; color:var(--gold2); line-height:1.15; min-height:2.3em; display:flex; align-items:center; justify-content:center}
 .cp-rar{color:var(--muted); font-size:.66rem}
 .codex-bonuses{border-top:1px dashed var(--line); padding-top:.4em}
+
+/* кузница сетов */
+.forge-sub{color:var(--gold2); font-weight:700; margin:.7em 0 .3em; font-size:.92rem}
+.forge-row{display:flex; align-items:center; justify-content:space-between; gap:.5em; flex-wrap:wrap;
+  background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.4em .7em; margin:.3em 0; font-size:.85rem}
+.forge-slots{display:flex; gap:.25em}
+.forge-slots .mini{padding:.2em .5em}

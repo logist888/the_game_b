@@ -113,6 +113,82 @@ function craft(recipeId) {
   render();
 }
 
+// --- Кузница сетов: ковка частей и перековка рарности ---
+function canAfford(cost) {
+  if (cost.sparks && (player.resources.sparks || 0) < cost.sparks) return false;
+  if (cost.souls && (player.resources.souls || 0) < cost.souls) return false;
+  if (cost.res) { for (const [k, v] of Object.entries(cost.res)) if ((player.resources[k] || 0) < v) return false; }
+  return true;
+}
+function payCost(cost) {
+  if (cost.sparks) spendRes('sparks', cost.sparks);
+  if (cost.souls) spendRes('souls', cost.souls);
+  if (cost.res) Object.entries(cost.res).forEach(([k, v]) => spendRes(k, v));
+}
+function costLabel(cost) {
+  const parts = [];
+  if (cost.res) Object.entries(cost.res).forEach(([k, v]) => parts.push(`${RESOURCES[k].icon}${v}`));
+  if (cost.sparks) parts.push(`🔥${cost.sparks}`);
+  if (cost.souls) parts.push(`👻${cost.souls}`);
+  return parts.join(' ');
+}
+// стоимость ковки части сета зависит от minTier комплекта
+function setCraftCost(setId) {
+  const t = GEAR_SETS[setId].minTier || 1;
+  const cost = { sparks: 50 + t * 20, res: {} };
+  if (t <= 3) cost.res = { metal: 3, cloth: 2, gem: 2 };
+  else if (t <= 6) cost.res = { metal: 5, gem: 3, dragonScale: 1 };
+  else cost.res = { hellSteel: 3, soulGem: 2, starCrystal: 2 };
+  if (t >= 9) cost.souls = 1;
+  return cost;
+}
+// стоимость перековки до целевой рарности (target — ключ рарности)
+function reforgeCost(target) {
+  const i = RARITY_ORDER.indexOf(target); // 1..5
+  const cost = { sparks: 60 * i, res: {} };
+  if (i <= 2) cost.res = { metal: 2 * i, gem: i };
+  else cost.res = { dragonScale: i - 1, soulGem: Math.max(1, i - 2) };
+  if (i >= 4) cost.souls = i - 3; // легендарный: 1 Душа, мифический: 2
+  return cost;
+}
+function craftSetPiece(setId, slot) {
+  const set = GEAR_SETS[setId];
+  if (!set || !set.pieces[slot]) return;
+  if (!player.codex || !player.codex[setId]) { pushLog('❌ Сначала найди хотя бы одну часть этого сета в походе.'); render(); return; }
+  const cost = setCraftCost(setId);
+  if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для ковки.'); render(); return; }
+  payCost(cost);
+  const it = makeSetItem(setId, slot, 'common');
+  addItem(it);
+  const ws = ['ring', 'amulet', 'earring'].includes(slot) ? 'jewelry' : 'smithy';
+  gainProfXp(ws, 8);
+  player.counters.crafted += 1;
+  pushLog(`🔥 Скована часть сета: ${it.name} [Обычный].`);
+  checkQuests();
+  saveGame();
+  render();
+}
+function reforgeItem(itemId) {
+  const i = player.inventory.findIndex((x) => x.id === itemId);
+  if (i < 0) return;
+  const it = player.inventory[i];
+  if (!it.set) return;
+  const idx = RARITY_ORDER.indexOf(it.rarity || 'common');
+  if (idx >= RARITY_ORDER.length - 1) { pushLog('❌ Уже максимальная рарность (Мифический).'); render(); return; }
+  const target = RARITY_ORDER[idx + 1];
+  const cost = reforgeCost(target);
+  if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для перековки.'); render(); return; }
+  payCost(cost);
+  const fresh = makeSetItem(it.set, it.slot, target);
+  fresh.id = it.id; // сохраняем тот же id
+  player.inventory[i] = fresh;
+  recordCodex(fresh);
+  gainProfXp('jewelry', 6);
+  pushLog(`🔨 Перековка: ${fresh.name} → [${RARITIES[target].name}]!`);
+  saveGame();
+  render();
+}
+
 // --- Экипировка ---
 function equipItem(itemId) {
   const it = player.inventory.find((x) => x.id === itemId);
