@@ -132,6 +132,48 @@ function equipItem(itemId) {
   pushLog(`🎽 Надето: ${it.name}.`);
   render();
 }
+// --- Сборки экипировки (лоадауты): сохранить текущий комплект и быстро надевать ---
+const LOADOUT_MAX = 6;
+function saveLoadout(name) {
+  name = String(name || '').trim() || `Сборка ${(player.loadouts.length || 0) + 1}`;
+  const items = {};
+  Object.entries(player.equip).forEach(([slot, it]) => { if (it) items[slot] = it.id; });
+  if (!Object.keys(items).length) { pushLog('❌ Нечего сохранять — экипировка пуста.'); render(); return; }
+  if (!player.loadouts) player.loadouts = [];
+  if (player.loadouts.length >= LOADOUT_MAX) { pushLog(`❌ Лимит сборок (${LOADOUT_MAX}). Удалите лишнюю.`); render(); return; }
+  player.loadouts.push({ name, items });
+  pushLog(`💾 Сборка «${name}» сохранена.`);
+  saveGame();
+  render();
+}
+function applyLoadout(idx) {
+  const lo = player.loadouts && player.loadouts[idx];
+  if (!lo) return;
+  // пул всех вещей: рюкзак + надетые
+  const pool = [...player.inventory];
+  Object.values(player.equip).forEach((it) => { if (it) pool.push(it); });
+  const newEquip = { weapon:null, head:null, body:null, shield:null, ring:null, amulet:null, earring:null };
+  let missing = 0;
+  Object.entries(lo.items).forEach(([slot, id]) => {
+    const it = pool.find((x) => x.id === id);
+    if (it && it.slot === slot) newEquip[slot] = it; else missing++;
+  });
+  const equippedIds = new Set(Object.values(newEquip).filter(Boolean).map((x) => x.id));
+  player.equip = newEquip;
+  player.inventory = pool.filter((x) => !equippedIds.has(x.id));
+  recalc();
+  pushLog(`🎽 Надета сборка «${lo.name}»${missing ? ` (${missing} предметов уже нет)` : ''}.`);
+  saveGame();
+  render();
+}
+function deleteLoadout(idx) {
+  if (!player.loadouts || !player.loadouts[idx]) return;
+  const [removed] = player.loadouts.splice(idx, 1);
+  pushLog(`🗑 Сборка «${removed.name}» удалена.`);
+  saveGame();
+  render();
+}
+
 function unequip(slot) {
   const it = player.equip[slot];
   if (!it) return;

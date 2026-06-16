@@ -41,6 +41,7 @@ function newPlayer(name) {
     counters: { kills:0, gathered:0, crafted:0, expeditions:0, bossKills:0 },
     // нижний мир: уровни построек смертных + время последнего сбора
     lowerWorld: { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() },
+    loadouts: [],         // сохранённые сборки экипировки (пресеты)
     lastTick: Date.now(),
     log: [],
     refCount: 0,
@@ -186,6 +187,7 @@ function recalc() {
   if (!player.lowerWorld.buildings) player.lowerWorld.buildings = { city:1, sawmill:1, quarry:1, mine:1, farm:1 };
   LOWER_ORDER.forEach((k) => { if (player.lowerWorld.buildings[k] == null) player.lowerWorld.buildings[k] = 1; });
   if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
+  if (!player.loadouts) player.loadouts = [];
   if (!player.professions) player.professions = {};
   PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
   // Пассивный бонус клана («клановый артефакт»): +1 ко всем статам за каждые
