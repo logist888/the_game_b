@@ -82,6 +82,7 @@ function render() {
   if (activeView === 'council') { setTimeout(loadLeaderboard, 0); setTimeout(loadRefLeaderboard, 0); }
   if (activeView === 'arena') setTimeout(loadPvpOpponents, 0);
   if (activeView === 'market' && !marketLoaded) setTimeout(loadMarket, 0);
+  if (activeView === 'lower') setTimeout(startLowerTicker, 0);
   if (activeView === 'clans' && !clansLoaded) setTimeout(loadClansView, 0);
 
   const homeTab = `<button class="tab home ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')"><span class="tabicon">${buildingArt('babylon_tower', '🏯')}</span><small>Башня</small></button>`;
@@ -267,13 +268,32 @@ function _oppCardHtml(opp, i) {
 }
 
 // ---------------- Нижний мир: города и шахты смертных ----------------
+let _lowerTimer = null;
+// HTML строки накопления (для живого обновления без полного render)
+function lowerPendingHtml() {
+  const pending = lowerPending();
+  const entries = Object.entries(pending);
+  const full = lowerElapsedHours() >= LOWER_CAP_HOURS;
+  if (!entries.length) {
+    // суммарная скорость в час, чтобы было видно, что добыча идёт
+    const rate = LOWER_ORDER.map((k) => `${lowerProdPerHour(k)} ${RESOURCES[LOWER_BUILDINGS[k].res].icon}`).join(' · ');
+    return `<span class="muted">копится… ⏳ ${rate} в час</span>`;
+  }
+  const str = entries.map(([res, qty]) => `${RESOURCES[res].icon} ${qty} ${RESOURCES[res].name}`).join(' · ');
+  return `${str}${full ? ' <b>(склады полны!)</b>' : ''}`;
+}
+// Тикер: пока открыт Нижний мир, обновляем строку накопления каждые 2 сек.
+function startLowerTicker() {
+  clearInterval(_lowerTimer);
+  _lowerTimer = setInterval(() => {
+    if (activeView !== 'lower') { clearInterval(_lowerTimer); _lowerTimer = null; return; }
+    const el = document.getElementById('lw-pending');
+    if (el) el.innerHTML = lowerPendingHtml();
+  }, 2000);
+}
+
 function viewLower() {
   const lw = player.lowerWorld;
-  const pending = lowerPending();
-  const hours = lowerElapsedHours();
-  const pendStr = Object.entries(pending).map(([res, qty]) => `${RESOURCES[res].icon} ${qty} ${RESOURCES[res].name}`).join(' · ');
-  const full = hours >= LOWER_CAP_HOURS;
-
   const rows = LOWER_ORDER.map((k) => {
     const b = LOWER_BUILDINGS[k];
     const lvl = lw.buildings[k] || 0;
@@ -295,8 +315,8 @@ function viewLower() {
   return `<div class="panel">
     <h2>🏘️ Нижний мир</h2>
     <p class="muted">Смертные трудятся на тебя круглые сутки. Возвращайся и собирай урожай. Улучшай постройки за золото; Город поднимает добычу всех шахт. Накопление ограничено ${LOWER_CAP_HOURS} ч — не давай складам простаивать.</p>
-    <div class="lw-collect ${full ? 'full' : ''}">
-      <div>📦 Накоплено${full ? ' <b>(склады полны!)</b>' : ''}: ${pendStr || '<span class="muted">пока пусто</span>'}</div>
+    <div class="lw-collect">
+      <div>📦 Накоплено: <span id="lw-pending">${lowerPendingHtml()}</span></div>
       <button class="big" onclick="collectLower()">Собрать урожай</button>
     </div>
     <div class="lw-list">${rows}</div>
