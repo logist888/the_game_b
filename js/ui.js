@@ -67,7 +67,7 @@ function render() {
     ${resStrip()}`;
 
   const views = {
-    tower: viewTower, stats: viewStats, stairs: viewStairs, arena: viewArena,
+    tower: viewTower, stats: viewStats, stairs: viewStairs, lower: viewLower, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
     market: viewMarket, tavern: viewTavern, bank: viewBank, clans: viewClans, council: viewCouncil,
   };
@@ -263,6 +263,43 @@ function _oppCardHtml(opp, i) {
       <span class="muted">HP ${opp.maxHp} · Урон ${opp.dmgMin}–${opp.dmgMax} · Броня ${opp.armor}</span>
     </div>
     <button class="mini" onclick="challengeOpponent(${i})">⚔️ Атаковать</button>
+  </div>`;
+}
+
+// ---------------- Нижний мир: города и шахты смертных ----------------
+function viewLower() {
+  const lw = player.lowerWorld;
+  const pending = lowerPending();
+  const hours = lowerElapsedHours();
+  const pendStr = Object.entries(pending).map(([res, qty]) => `${RESOURCES[res].icon} ${qty} ${RESOURCES[res].name}`).join(' · ');
+  const full = hours >= LOWER_CAP_HOURS;
+
+  const rows = LOWER_ORDER.map((k) => {
+    const b = LOWER_BUILDINGS[k];
+    const lvl = lw.buildings[k] || 0;
+    const perHour = lowerProdPerHour(k);
+    const cost = upgradeLowerCost(k);
+    const note = k === 'city' ? `<div class="lw-note">⬆ добыча шахт: +${(lvl * 5)}%</div>` : '';
+    return `<div class="lw-row">
+      <div class="lw-icon">${b.icon}</div>
+      <div class="lw-body">
+        <div class="lw-head"><b>${b.name}</b> <span class="tag">ур. ${lvl}</span></div>
+        <div class="lw-desc muted">${b.desc}</div>
+        <div class="lw-rate">⏳ ${perHour} ${RESOURCES[b.res].icon}/час</div>
+        ${note}
+      </div>
+      <button class="mini" ${hasRes('gold', cost) ? '' : 'disabled'} onclick="upgradeLower('${k}')">⬆ ${cost} 🪙</button>
+    </div>`;
+  }).join('');
+
+  return `<div class="panel">
+    <h2>🏘️ Нижний мир</h2>
+    <p class="muted">Смертные трудятся на тебя круглые сутки. Возвращайся и собирай урожай. Улучшай постройки за золото; Город поднимает добычу всех шахт. Накопление ограничено ${LOWER_CAP_HOURS} ч — не давай складам простаивать.</p>
+    <div class="lw-collect ${full ? 'full' : ''}">
+      <div>📦 Накоплено${full ? ' <b>(склады полны!)</b>' : ''}: ${pendStr || '<span class="muted">пока пусто</span>'}</div>
+      <button class="big" onclick="collectLower()">Собрать урожай</button>
+    </div>
+    <div class="lw-list">${rows}</div>
   </div>`;
 }
 

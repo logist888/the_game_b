@@ -315,3 +315,14 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .clan-row,.clan-member{display:flex; align-items:center; gap:.5em; background:var(--panel2);
   border:1px solid var(--line); border-radius:8px; padding:.4em .6em; font-size:.85rem}
 .clan-row span:first-child,.clan-member span:first-child{flex:1}
+
+/* нижний мир */
+.lw-collect{background:var(--panel2); border:1px solid var(--gold); border-radius:10px; padding:.7em .9em; margin:.5em 0 .8em; display:flex; flex-direction:column; gap:.5em}
+.lw-collect.full{border-color:var(--danger)}
+.lw-list{display:flex; flex-direction:column; gap:.5em}
+.lw-row{display:flex; align-items:center; gap:.6em; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:.5em .7em}
+.lw-icon{font-size:1.9rem; width:1.6em; text-align:center; flex-shrink:0}
+.lw-body{flex:1; min-width:0; font-size:.85rem}
+.lw-desc{font-size:.74rem}
+.lw-rate{color:var(--gold2); font-size:.8rem; margin-top:.15em}
+.lw-note{color:#6fa84f; font-size:.74rem}
