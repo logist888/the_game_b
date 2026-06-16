@@ -428,14 +428,21 @@ function recipeCard(r) {
     if (entry) lockHint = `откроется: ${PROFESSIONS[r.ws].icon} ${PROFESSIONS[r.ws].name} ур. ${entry[1]}`;
     else if ((r.sparks || 0) >= 300) lockHint = '🐲 схема — трофей с боссов (миры 7+)';
   }
+  // превью результата: арт предмета или иконка ресурса
+  const art = r.out.item
+    ? itemArt(r.out.item)
+    : `<span class="rc-res-icon">${RESOURCES[r.out.res].icon}</span>`;
   return `<div class="recipe ${ok ? '' : 'locked'}">
-    <div class="rc-out"><b>${esc(out)}</b> <span class="ws">[${WORKSHOPS[r.ws]}]</span></div>
-    <div class="rc-in">${chips}</div>
-    ${known
-      ? (ok
-          ? `<button class="mini" onclick="craft('${r.id}')">создать</button>`
-          : `<span class="muted">⚠ не хватает: ${lacks.join(', ')}</span>`)
-      : `<span class="muted">${lockHint}</span>`}
+    <div class="rc-art">${art}</div>
+    <div class="rc-body">
+      <div class="rc-out"><b>${esc(out)}</b> <span class="ws">[${WORKSHOPS[r.ws]}]</span></div>
+      <div class="rc-in">${chips}</div>
+      ${known
+        ? (ok
+            ? `<button class="mini" onclick="craft('${r.id}')">создать</button>`
+            : `<span class="muted">⚠ не хватает: ${lacks.join(', ')}</span>`)
+        : `<span class="muted">${lockHint}</span>`}
+    </div>
   </div>`;
 }
 function viewWorkshops() {

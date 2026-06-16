@@ -143,7 +143,10 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .shop-row.gear{grid-template-columns:1fr auto auto}
 .shop-sub{margin:.5em 0 .2em; color:var(--gold2); font-size:.92rem}
 .recipe-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.6rem}
-.recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem}
+.recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem; display:flex; gap:.5rem}
+.rc-art{width:60px; height:60px; flex-shrink:0}
+.rc-res-icon{display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:2rem; background:#241a10; border:1px solid var(--line); border-radius:8px}
+.rc-body{flex:1; min-width:0}
 .recipe.locked{opacity:.7}
 .rc-out .ws{color:var(--muted); font-size:.78em} .rc-in{color:var(--muted); margin:.3em 0; display:flex; flex-wrap:wrap; gap:.25em}
 .rc-chip{background:#241a10; border:1px solid var(--line); border-radius:5px; padding:.05em .35em; font-size:.92em}
