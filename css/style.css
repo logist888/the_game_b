@@ -326,3 +326,9 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .lw-desc{font-size:.74rem}
 .lw-rate{color:var(--gold2); font-size:.8rem; margin-top:.15em}
 .lw-note{color:#6fa84f; font-size:.74rem}
+
+/* сборки экипировки (лоадауты) */
+.loadouts{display:flex; flex-direction:column; gap:.3em; margin:.3em 0}
+.loadout-row{display:flex; align-items:center; gap:.4em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.35em .6em; font-size:.85rem}
+.loadout-row span:first-child{flex:1; min-width:0}
+.loadout-save{margin-top:.4em}

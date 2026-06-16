@@ -182,6 +182,7 @@ function viewStats() {
         <h3>Магия</h3>${viewMagicMini()}
         <h3>Профессии</h3>${viewProfessions()}
         <h3>Экипировка</h3>${equipHtml}
+        <h3>Сборки экипировки</h3>${loadoutsHtml()}
       </div>
     </div>
     <h3>Рюкзак (${player.inventory.length})</h3>
@@ -214,6 +215,22 @@ function viewProfessions() {
   }).join('');
   return `<div class="prof-list">${rows}
     <div class="muted hint">Мастерство повышает качество изделий и открывает «тайные знания» — новые рецепты в мастерских.</div></div>`;
+}
+
+function loadoutsHtml() {
+  const list = (player.loadouts || []).map((lo, i) => {
+    const slots = Object.keys(lo.items || {}).length;
+    return `<div class="loadout-row">
+      <span>🎽 ${esc(lo.name)} <span class="muted">(${slots} предм.)</span></span>
+      <button class="mini" onclick="applyLoadout(${i})">надеть</button>
+      <button class="mini danger" onclick="deleteLoadout(${i})">✕</button>
+    </div>`;
+  }).join('') || '<span class="muted">Нет сохранённых сборок. Оденься как нужно и сохрани комплект.</span>';
+  return `<div class="loadouts">${list}</div>
+    <div class="form-row loadout-save">
+      <input id="loadout-name" class="mk-input" type="text" maxlength="20" placeholder="название (напр. Воин)">
+      <button class="mini" onclick="saveLoadout(document.getElementById('loadout-name').value)">💾 Сохранить текущую</button>
+    </div>`;
 }
 
 function itemCard(it) {
