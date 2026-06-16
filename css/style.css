@@ -332,3 +332,14 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .loadout-row{display:flex; align-items:center; gap:.4em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.35em .6em; font-size:.85rem}
 .loadout-row span:first-child{flex:1; min-width:0}
 .loadout-save{margin-top:.4em}
+
+/* рарность и сет-бонусы */
+.item-card.rar{border-left-width:3px}
+.rar-tag{font-size:.72rem; font-weight:700}
+.ic-set{font-size:.74rem; color:var(--gold)}
+.equip-set{font-size:.66rem; color:var(--gold)}
+.set-block{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5em .7em; margin:.4em 0}
+.set-title{color:var(--gold2); font-weight:700; font-size:.9rem; margin-bottom:.25em}
+.set-bonus{font-size:.8rem; color:var(--muted); padding:.1em 0}
+.set-bonus.on{color:var(--txt)}
+.set-bonus.on b{color:#6fa84f}

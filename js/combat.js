@@ -360,6 +360,22 @@ function rollLoot() {
       clog(`🎁 Трофей: ${item.name}!`);
     }
   }
+  // части классовых сетов: падают по достижении minTier мира,
+  // рарность тем выше, чем выше уровень героя и сложность похода (200% — самые редкие)
+  if (chance(15 + player.derived.lootBonus / 10)) {
+    const eligible = Object.keys(GEAR_SETS).filter((id) => tier >= (GEAR_SETS[id].minTier || 1));
+    if (eligible.length) {
+      const setId = eligible[rnd(0, eligible.length - 1)];
+      const slots = Object.keys(GEAR_SETS[setId].pieces);
+      const slot = slots[rnd(0, slots.length - 1)];
+      const difficulty = (combat.ctx && combat.ctx.difficulty) || 100;
+      const rk = rollRarity(player.xpLevel || 1, difficulty);
+      const item = makeSetItem(setId, slot, rk);
+      addItem(item);
+      combat.loot.item = item.name;
+      clog(`🎁 Трофей сета «${GEAR_SETS[setId].name}»: ${item.name} [${RARITIES[rk].name}]!`);
+    }
+  }
   // с боссов в мирах 7+ — схемы легендарного снаряжения
   const legendIds = ['rune_blade','necro_staff','star_bow','hell_maul','dragon_armor','arcane_robe','shadow_helm','star_amulet','dragon_ring','hell_earring'];
   if (tier >= 7 && bosses > 0 && chance(20 + player.derived.lootBonus / 10)) {
@@ -372,6 +388,18 @@ function rollLoot() {
       clog(`📜 Схема легендарного предмета «${rec ? rec.name : id}» получена!`);
     }
   }
+}
+
+// Ролл рарности предмета: чем выше уровень и сложность, тем больше шанс топ-рарности.
+function rollRarity(level, difficulty) {
+  const diffFactor = clamp((difficulty - 75) / 125, 0, 1); // 75%→0, 200%→1
+  const lvlFactor = clamp((level || 1) / 60, 0, 1);
+  const t = 0.6 * diffFactor + 0.4 * lvlFactor; // 0..1 — общий «буст редкости»
+  const weights = RARITY_ORDER.map((k, i) => RARITIES[k].weight * Math.pow(1 + t * 4, i));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < RARITY_ORDER.length; i++) { r -= weights[i]; if (r <= 0) return RARITY_ORDER[i]; }
+  return 'common';
 }
 
 function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
