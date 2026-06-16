@@ -920,7 +920,9 @@ function _refSectionHtml() {
   const userId = window.TG_USER && window.TG_USER.id;
   const botHandle = window.BOT_HANDLE;
   if (!userId || !botHandle || botHandle === 'YOUR_BOT_USERNAME') return '';
-  const refLink = `https://t.me/${botHandle}?start=ref_${userId}`;
+  // startapp (а не start) — это deep-link именно в Mini App: Telegram передаёт
+  // значение в initDataUnsafe.start_param, по которому регистрируется реферал.
+  const refLink = `https://t.me/${botHandle}?startapp=ref_${userId}`;
   const refCount = player.refCount || 0;
   const earned = refCount * 200;
   return `<div class="ref-box">
