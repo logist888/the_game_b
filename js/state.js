@@ -42,6 +42,7 @@ function newPlayer(name) {
     // нижний мир: уровни построек смертных + время последнего сбора
     lowerWorld: { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() },
     loadouts: [],         // сохранённые сборки экипировки (пресеты)
+    codex: {},            // кодекс коллекции сетов: setId -> { slot: лучшая рарность }
     lastTick: Date.now(),
     log: [],
     refCount: 0,
@@ -188,6 +189,11 @@ function recalc() {
   LOWER_ORDER.forEach((k) => { if (player.lowerWorld.buildings[k] == null) player.lowerWorld.buildings[k] = 1; });
   if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
   if (!player.loadouts) player.loadouts = [];
+  if (!player.codex) {
+    // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке
+    player.codex = {};
+    [...player.inventory, ...Object.values(player.equip)].forEach((it) => { if (it && it.set) recordCodex(it); });
+  }
   if (!player.professions) player.professions = {};
   PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
   // Пассивный бонус клана («клановый артефакт»): +1 ко всем статам за каждые
@@ -312,6 +318,7 @@ function spendRes(key, qty) { if (!hasRes(key, qty)) return false; player.resour
 function addItem(item) {
   const it = JSON.parse(JSON.stringify(item));
   it.id = ++_itemId;
+  if (it.set) recordCodex(it);
   if (it.stack) {
     const ex = player.inventory.find((x) => x.name === it.name && x.stack);
     if (ex) { ex.qty = (ex.qty || 1) + 1; return ex; }
@@ -319,6 +326,16 @@ function addItem(item) {
   }
   player.inventory.push(it);
   return it;
+}
+
+// Кодекс коллекции: запоминаем лучшую найденную рарность каждой части сета.
+function recordCodex(it) {
+  if (!it || !it.set || !it.slot) return;
+  if (!player.codex) player.codex = {};
+  if (!player.codex[it.set]) player.codex[it.set] = {};
+  const cur = player.codex[it.set][it.slot];
+  const rank = (k) => RARITY_ORDER.indexOf(k);
+  if (!cur || rank(it.rarity) > rank(cur)) player.codex[it.set][it.slot] = it.rarity || 'common';
 }
 
 function pushLog(msg) {

@@ -70,6 +70,7 @@ function render() {
     tower: viewTower, stats: viewStats, stairs: viewStairs, lower: viewLower, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
     market: viewMarket, tavern: viewTavern, bank: viewBank, clans: viewClans, council: viewCouncil,
+    codex: viewCodex,
   };
   // баннер с артом здания над страницей (кроме башни и лестницы — у них свои баннеры)
   const noBanner = ['tower', 'stairs'];
@@ -281,6 +282,46 @@ function setsSummaryHtml() {
     }).join('');
     return `<div class="set-block"><div class="set-title">${set.icon} ${esc(set.name)} <span class="muted">${set.class} · ${n}/${total}</span></div>${tiers}</div>`;
   }).join('');
+}
+
+// ---------------- Коллекция: кодекс классовых сетов ----------------
+const CODEX_SLOT_ICONS = { weapon:'⚔️', head:'🪖', body:'🛡', shield:'🔰', ring:'💍', amulet:'📿', earring:'✨' };
+function viewCodex() {
+  const codex = player.codex || {};
+  let totalPieces = 0, foundPieces = 0, fullSets = 0;
+  const blocks = Object.entries(GEAR_SETS).map(([id, set]) => {
+    const slots = Object.keys(set.pieces);
+    const total = slots.length; totalPieces += total;
+    const found = codex[id] || {};
+    const nFound = slots.filter((s) => found[s]).length; foundPieces += nFound;
+    if (nFound === total) fullSets++;
+    const bestRank = Math.max(-1, ...slots.map((s) => (found[s] ? RARITY_ORDER.indexOf(found[s]) : -1)));
+    const bestRar = bestRank >= 0 ? RARITIES[RARITY_ORDER[bestRank]] : null;
+    const pieces = slots.map((s) => {
+      const it = set.pieces[s];
+      const rar = found[s] && RARITIES[found[s]];
+      return `<div class="codex-piece ${rar ? '' : 'locked'}"${rar ? ` style="border-color:${rar.color}"` : ''}>
+        <div class="cp-icon">${CODEX_SLOT_ICONS[s] || '❔'}</div>
+        <div class="cp-name"${rar ? ` style="color:${rar.color}"` : ''}>${rar ? esc(it.name) : '???'}</div>
+        <div class="cp-rar">${rar ? rar.name : '🔒 не найдено'}</div>
+      </div>`;
+    }).join('');
+    const bonuses = [['2', 2], ['4', 4], ['full', total]].filter(([k]) => set.bonuses[k]).map(([k, need]) =>
+      `<div class="set-bonus on"><b>(${need === total ? 'полный' : need})</b> ${esc(set.bonuses[k].desc)}</div>`).join('');
+    return `<div class="codex-set">
+      <div class="codex-head">
+        <span class="codex-title">${set.icon} ${esc(set.name)}</span>
+        <span class="muted">${set.class} · с мира ${set.minTier} · ${nFound}/${total}${bestRar ? ` · макс. <b style="color:${bestRar.color}">${bestRar.name}</b>` : ''}</span>
+      </div>
+      <div class="codex-pieces">${pieces}</div>
+      <div class="codex-bonuses">${bonuses}</div>
+    </div>`;
+  }).join('');
+  return `<div class="panel">
+    <h2>🗂️ Коллекция сетов</h2>
+    <p class="muted">Собрано частей: <b>${foundPieces}/${totalPieces}</b> · Полных комплектов: <b>${fullSets}/${Object.keys(GEAR_SETS).length}</b>. Части падают в походах — рарность тем выше, чем выше уровень героя и сложность (на 200% — самые редкие).</p>
+    ${blocks}
+  </div>`;
 }
 
 // ---------------- Лестница в Небо: выбор похода ----------------

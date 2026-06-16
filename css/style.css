@@ -343,3 +343,15 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .set-bonus{font-size:.8rem; color:var(--muted); padding:.1em 0}
 .set-bonus.on{color:var(--txt)}
 .set-bonus.on b{color:#6fa84f}
+
+/* кодекс коллекции сетов */
+.codex-set{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:.7em .8em; margin:.6em 0}
+.codex-head{display:flex; justify-content:space-between; align-items:baseline; gap:.6em; flex-wrap:wrap; margin-bottom:.5em}
+.codex-title{color:var(--gold2); font-weight:700; font-size:1rem}
+.codex-pieces{display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:.4em; margin-bottom:.5em}
+.codex-piece{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:.4em; text-align:center; font-size:.72rem}
+.codex-piece.locked{opacity:.5; filter:grayscale(1)}
+.cp-icon{font-size:1.4rem}
+.cp-name{font-weight:700; color:var(--gold2); line-height:1.15; min-height:2.3em; display:flex; align-items:center; justify-content:center}
+.cp-rar{color:var(--muted); font-size:.66rem}
+.codex-bonuses{border-top:1px dashed var(--line); padding-top:.4em}
