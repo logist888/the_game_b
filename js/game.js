@@ -42,7 +42,24 @@ function checkQuests() {
       if (st.stage >= stages) st.done = true;
     }
   });
+  checkAchievements();
   saveGame();
+}
+
+// Достижения: разблокируем выполненные, выдаём награду один раз.
+function checkAchievements() {
+  if (!player.achievements) player.achievements = [];
+  ACHIEVEMENTS.forEach((a) => {
+    if (player.achievements.includes(a.id)) return;
+    let ok = false;
+    try { ok = a.check(player); } catch (e) { ok = false; }
+    if (!ok) return;
+    player.achievements.push(a.id);
+    if (a.reward) Object.entries(a.reward).forEach(([k, v]) => addRes(k, v));
+    const rstr = a.reward ? ` Награда: ${Object.entries(a.reward).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(', ')}.` : '';
+    pushLog(`🏆 Достижение «${a.name}»!${rstr}`);
+    if (typeof showToast === 'function') showToast(`🏆 ${a.name}`);
+  });
 }
 
 // --- Добыча ресурсов «своими руками» (квест «Заготовщик») ---
@@ -219,6 +236,7 @@ function saveLoadout(name) {
   if (player.loadouts.length >= LOADOUT_MAX) { pushLog(`❌ Лимит сборок (${LOADOUT_MAX}). Удалите лишнюю.`); render(); return; }
   player.loadouts.push({ name, items });
   pushLog(`💾 Сборка «${name}» сохранена.`);
+  checkAchievements();
   saveGame();
   render();
 }
