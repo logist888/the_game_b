@@ -117,10 +117,11 @@ function craft(recipeId) {
 function equipItem(itemId) {
   const it = player.inventory.find((x) => x.id === itemId);
   if (!it || !it.slot) return;
-  // проверка требований по статам
+  // проверка требований по статам — по ИТОГОВОМУ значению (с учётом надетой
+  // бижутерии/брони и бонуса клана), чтобы можно было «добрать» статы вещами
   if (it.req) {
     for (const [k, v] of Object.entries(it.req)) {
-      if (player.stats[k].val < v) { pushLog(`❌ Требуется ${STATS[k].name} ${v} для «${it.name}».`); render(); return; }
+      if (statTotal(k) < v) { pushLog(`❌ Требуется ${STATS[k].name} ${v} для «${it.name}» (у вас ${statTotal(k)}).`); render(); return; }
     }
   }
   const prev = player.equip[it.slot];
@@ -170,7 +171,7 @@ function sellRes(res, qty) {
 
 // --- Снаряжение за золото (обычное, нелегендарное) ---
 // Цена по «силе» предмета: искры рецепта как прокса + топливо + база.
-function gearPrice(r) { return 120 + (r.sparks || 0) * 4 + (r.fuel || 0) * 60; }
+function gearPrice(r) { return 360 + (r.sparks || 0) * 12 + (r.fuel || 0) * 180; }
 // Список снаряжения, доступного к покупке (всё нелегендарное снаряжение со слотом).
 const SHOP_GEAR = RECIPES.filter((r) => r.out.item && r.out.item.slot && (r.sparks || 0) < 300);
 function buyGear(recipeId) {

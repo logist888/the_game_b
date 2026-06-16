@@ -124,8 +124,13 @@ function viewStats() {
   const statRows = STAT_ORDER.map((k) => {
     const s = player.stats[k];
     const pct = (s.prog / s.cap) * 100;
+    const bonus = statTotal(k) - s.val; // от вещей + клана
+    const eff = s.val + bonus;
+    const valHtml = bonus
+      ? `<b>${eff}</b> <span class="stat-bonus">(${s.val}<span class="plus">+${bonus}</span>)</span>`
+      : `<b>${s.val}</b>`;
     return `<div class="stat-row">
-      <div class="sname">${STATS[k].name} <b>${s.val}</b></div>
+      <div class="sname">${STATS[k].name} ${valHtml}</div>
       <div class="bar tiny"><div class="fill" style="width:${pct}%"></div><span>${Math.round(s.prog)}/${s.cap}</span></div>
       <div class="sdesc">${STATS[k].desc} <i>(растёт от: ${STATS[k].grows})</i></div>
     </div>`;
@@ -472,17 +477,19 @@ function viewShop() {
     <button class="mini" onclick="buyRes('${g.res}',10)">+10</button>
     <button class="mini" onclick="sellRes('${g.res}',1)">продать</button>
   </div>`).join('');
+  const SLOT_ICON = { weapon:'⚔️', head:'🪖', body:'🛡', shield:'🔰', ring:'💍', amulet:'📿', earring:'✨' };
   const gearCat = (title, list) => {
     if (!list.length) return '';
     const rows = list.map((r) => {
       const it = r.out.item;
       const price = gearPrice(r);
+      const icon = SLOT_ICON[it.slot] || '🎒';
       const stat = it.dmg ? `урон ${it.dmg[0]}–${it.dmg[1]}`
         : it.armor ? `броня ${it.armor}`
         : (it.bonus ? Object.entries(it.bonus).map(([k, v]) => `+${v} ${STATS[k].name}`).join(', ') : '');
       const req = it.req && Object.keys(it.req).length ? ` · треб: ${Object.entries(it.req).map(([k, v]) => `${STATS[k].name} ${v}`).join(', ')}` : '';
       return `<div class="shop-row gear">
-        <span>${esc(it.name)} <span class="muted">${stat}${req}</span></span>
+        <span>${icon} ${esc(it.name)} <span class="muted">${stat}${req}</span></span>
         <span class="muted">${price} 🪙</span>
         <button class="mini" ${hasRes('gold', price) ? '' : 'disabled'} onclick="buyGear('${r.id}')">купить</button>
       </div>`;
