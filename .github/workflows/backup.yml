@@ -1,0 +1,31 @@
+name: Backup main (restore points)
+
+# Делает точку восстановления на КАЖДЫЙ пуш в main: создаёт тег backup/<дата-время>,
+# указывающий на коммит. Так любая задеплоенная версия остаётся восстановимой —
+# если новый мёрж сломал прод, можно вернуть main на предыдущий тег (см. BACKUP.md).
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backup-main
+  cancel-in-progress: false
+
+jobs:
+  tag-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create backup tag for this commit
+        run: |
+          TS=$(date -u +'%Y%m%d-%H%M%S')
+          SHORT=$(git rev-parse --short HEAD)
+          TAG="backup/${TS}-${SHORT}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "Создан тег-бэкап: $TAG -> $(git rev-parse HEAD)"
