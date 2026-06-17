@@ -618,6 +618,10 @@ function lowerBuildSeconds(targetLvl) {
 function lowerTick() {
   const c = player.lowerWorld && player.lowerWorld.construction;
   if (!c) return false;
+  // пересчёт под актуальную формулу: если вшитый таймер длиннее нового — укорачиваем
+  // (только вниз, чтобы не отменять ускорение за Души)
+  const expected = (c.startAt || Date.now()) + lowerBuildSeconds(c.targetLvl) * 1000;
+  if (c.finishAt > expected) c.finishAt = expected;
   if (Date.now() >= c.finishAt) {
     player.lowerWorld.buildings[c.key] = c.targetLvl;
     player.lowerWorld.construction = null;
