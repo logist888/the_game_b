@@ -905,8 +905,10 @@ function viewMarket() {
   const myId = String(TG_USER.id);
   const mine = marketLots.filter((l) => String(l.sellerId) === myId);
   const others = marketLots.filter((l) => String(l.sellerId) !== myId);
+  const myItemN = mine.filter((l) => l.kind === 'item').length;
+  const myResN = mine.filter((l) => l.kind === 'res').length;
 
-  const TABS = [['buyItems', '🛒 Купить вещи'], ['sellItems', '🏷️ Продать вещи'], ['buyRes', '📥 Купить ресурсы'], ['sellRes', '📤 Продать ресурсы']];
+  const TABS = [['buyItems', '🛒 Купить вещи'], ['sellItems', `🏷️ Продать вещи${myItemN ? ` (${myItemN})` : ''}`], ['buyRes', '📥 Купить ресурсы'], ['sellRes', `📤 Продать ресурсы${myResN ? ` (${myResN})` : ''}`]];
   const tabBtns = TABS.map(([id, label]) => `<button class="mk-tab ${marketTab === id ? 'on' : ''}" onclick="marketTab='${id}';render()">${label}</button>`).join('');
   const GTABS = [['weapon', '⚔️ Оружие'], ['armor', '🛡 Доспехи'], ['jewelry', '💍 Бижутерия']];
   const gearTabs = () => `<div class="mk-subtabs">${GTABS.map(([id, label]) => `<button class="mk-subtab ${marketGearTab === id ? 'on' : ''}" onclick="marketGearTab='${id}';render()">${label}</button>`).join('')}</div>`;
@@ -920,8 +922,8 @@ function viewMarket() {
       : '<p class="muted">В этой категории пока никто ничего не продаёт.</p>';
     bodyHtml = gearTabs() + cards;
   } else if (marketTab === 'sellItems') {
-    const myItemLots = mine.filter((l) => l.kind === 'item' && _mkGearCat(l.item.slot) === marketGearTab);
-    const myHtml = myItemLots.length ? `<h4 class="mk-h4">📦 Мои выставленные</h4><div class="mk-grid">${myItemLots.map((l) => _mkItemCard(l.item,
+    const myItemLots = mine.filter((l) => l.kind === 'item'); // показываем все мои лоты-вещи во всех подтабах
+    const myHtml = myItemLots.length ? `<h4 class="mk-h4">📦 Мои выставленные (${myItemLots.length})</h4><div class="mk-grid">${myItemLots.map((l) => _mkItemCard(l.item,
       `<div class="mk-card-foot"><span class="mk-price">${l.price} 🪙</span><button class="mini" onclick="cancelLot('${l.id}')">снять</button></div>`)).join('')}</div>` : '';
     const inv = player.inventory.filter((it) => it.slot && _mkGearCat(it.slot) === marketGearTab);
     const invHtml = inv.length ? `<div class="mk-grid">${inv.map((it) => _mkItemCard(it,
