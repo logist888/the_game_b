@@ -376,6 +376,18 @@ function rollLoot() {
       clog(`🎁 Трофей сета «${GEAR_SETS[setId].name}»: ${item.name} [${RARITIES[rk].name}]!`);
     }
   }
+  // [ВРЕМЕННО/ТЕСТ] Единорог (мир 12) — 100% дроп мифической вещи сета за каждого убитого.
+  const unicorns = combat.mobs.filter((m) => String(m.name).replace(' ⭐', '') === 'Единорог').length;
+  for (let u = 0; u < unicorns; u++) {
+    const ids = Object.keys(GEAR_SETS);
+    const setId = ids[rnd(0, ids.length - 1)];
+    const slots = Object.keys(GEAR_SETS[setId].pieces);
+    const slot = slots[rnd(0, slots.length - 1)];
+    const item = makeSetItem(setId, slot, 'mythic');
+    addItem(item);
+    combat.loot.item = item.name;
+    clog(`🦄 Единорог обронил: ${item.name} [${RARITIES.mythic.name}]!`);
+  }
   // с боссов в мирах 7+ — схемы легендарного снаряжения
   const legendIds = ['rune_blade','necro_staff','star_bow','hell_maul','dragon_armor','arcane_robe','shadow_helm','star_amulet','dragon_ring','hell_earring'];
   if (tier >= 7 && bosses > 0 && chance(20 + player.derived.lootBonus / 10)) {
