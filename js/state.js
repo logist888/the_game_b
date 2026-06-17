@@ -43,6 +43,7 @@ function newPlayer(name) {
     lowerWorld: { buildings: { city:1, sawmill:1, quarry:1, mine:1, farm:1 }, lastCollect: Date.now() },
     loadouts: [],         // сохранённые сборки экипировки (пресеты)
     achievements: [],     // id разблокированных достижений
+    daily: null,          // ежедневное: вход (стрик) + задания
     codex: {},            // кодекс коллекции сетов: setId -> { slot: лучшая рарность }
     lastTick: Date.now(),
     log: [],
@@ -191,6 +192,7 @@ function recalc() {
   if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
   if (!player.loadouts) player.loadouts = [];
   if (!player.achievements) player.achievements = [];
+  if (typeof ensureDaily === 'function') ensureDaily();
   if (!player.codex) {
     // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке
     player.codex = {};

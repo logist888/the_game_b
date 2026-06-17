@@ -499,6 +499,21 @@ const ACHIEVEMENTS = [
   { id:'mythic', icon:'🔴', name:'Миф во плоти', desc:'Найди предмет мифической рарности.', reward:{ souls:2 }, check:(p) => _acMaxRarity(p) >= RARITY_ORDER.indexOf('mythic') },
 ];
 
+// ----------------------------------------------------------------------------
+// ЕЖЕДНЕВНОЕ: награда за вход (со стриком) и ежедневные задания.
+// Прогресс заданий = накопительный счётчик минус «снимок» на начало дня.
+// ----------------------------------------------------------------------------
+const DAILY_QUESTS = [
+  { id:'dq_kill',   icon:'⚔️', name:'Истребление', metric:'kills',       goal:30, desc:'Убей 30 мобов в походах',     reward:{ gold:150 } },
+  { id:'dq_exped',  icon:'🪜', name:'Походы',       metric:'expeditions', goal:5,  desc:'Соверши 5 походов',           reward:{ gold:150 } },
+  { id:'dq_boss',   icon:'🐲', name:'Босс дня',     metric:'bossKills',   goal:1,  desc:'Победи 1 босса',             reward:{ sparks:80 } },
+  { id:'dq_arena',  icon:'🤺', name:'Арена',        metric:'pvpWins',     goal:3,  desc:'Победи 3 раза на Арене',     reward:{ gold:200 } },
+  { id:'dq_gather', icon:'⛏️', name:'Заготовка',    metric:'gathered',    goal:20, desc:'Добудь 20 ресурсов руками',  reward:{ gold:120 } },
+  { id:'dq_craft',  icon:'🔨', name:'Ремесло',      metric:'crafted',     goal:3,  desc:'Создай 3 предмета',          reward:{ sparks:60 } },
+];
+// Бонус за выполнение ВСЕХ ежедневных заданий
+const DAILY_ALL_REWARD = { gold:500, souls:1 };
+
 // Создать конкретный предмет сета заданной рарности (рарность множит статы).
 function makeSetItem(setId, slot, rarityKey) {
   const set = GEAR_SETS[setId];
@@ -518,6 +533,7 @@ function makeSetItem(setId, slot, rarityKey) {
 const TOWER_BUILDINGS = [
   { id:'stats',     name:'Покои героя',   icon:'🧝', desc:'Статы, навыки, экипировка и магия полубога.' },
   { id:'stairs',    name:'Лестница в Небо',icon:'🪜', desc:'Спуститься в миры и выбрать локацию для похода.' },
+  { id:'daily',     name:'Дары дня',      icon:'🎁', desc:'Ежедневная награда за вход и ежедневные задания с бонусами.' },
   { id:'lower',     name:'Нижний мир',    icon:'🏘️', desc:'Города и шахты смертных: пассивная добыча ресурсов во времени (раздел GDD «нижний мир»).' },
   { id:'arena',     name:'Арена',         icon:'⚔️', desc:'Тренировочные бои с двойником ради опыта.' },
   { id:'workshops', name:'Мастерские',    icon:'🔨', desc:'Переработка ресурсов и создание оружия, брони, бижутерии.' },
