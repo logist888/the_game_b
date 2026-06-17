@@ -412,3 +412,6 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 
 /* табы покоев героя (3 колонки) */
 .mk-tabs-3{grid-template-columns:repeat(3,1fr)}
+
+/* кнопка сброса в Совете */
+.council-reset{display:block; margin-top:1.2em}

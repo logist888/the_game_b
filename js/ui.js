@@ -11,6 +11,7 @@ let marketTab = 'buyItems';   // buyItems | sellItems | buyRes | sellRes
 let marketGearTab = 'weapon'; // weapon | armor | jewelry
 let statsTab = 'equip';       // Покои героя: equip | bag | stats
 let bagTab = 'weapon';        // подтаб рюкзака: weapon | armor | jewelry | consum
+let councilTab = 'quests';    // Совет старейшин: quests | ach | fame
 let clansList = [];
 let clansLoaded = false;
 let clanBusy = false;
@@ -1206,17 +1207,26 @@ function viewCouncil() {
       <div class="q-reward">Награда за этап: ${reward}</div>
     </div>`;
   }).join('');
-  return `<div class="panel"><h2>📜 Совет старейшин</h2>
-    <div class="lb-box">
+  const TABS = [['quests', '📜 Квесты'], ['ach', `🏆 Достижения (${(player.achievements || []).length})`], ['fame', '👑 Зал славы']];
+  const tabBtns = TABS.map(([id, label]) => `<button class="mk-tab ${councilTab === id ? 'on' : ''}" onclick="councilTab='${id}';render()">${label}</button>`).join('');
+
+  let bodyHtml = '';
+  if (councilTab === 'quests') {
+    bodyHtml = `<p class="muted">Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).</p>${rows}`;
+  } else if (councilTab === 'ach') {
+    bodyHtml = `<h3>🏆 Достижения ${achievementsCountHtml()}</h3>${achievementsHtml()}`;
+  } else { // fame
+    bodyHtml = `<div class="lb-box">
       <h3>🏆 Зал славы</h3>
       <div class="ref-board" id="lbBoard"><span class="muted">⏳ Загрузка…</span></div>
     </div>
-    ${_refSectionHtml()}
-    <p class="muted">Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).</p>
-    ${rows}
-    <h3>🏆 Достижения ${achievementsCountHtml()}</h3>
-    ${achievementsHtml()}
-    <button class="mini danger" onclick="if(confirm('Сбросить весь прогресс?')){resetGame();render();}">Начать заново</button>
+    ${_refSectionHtml()}`;
+  }
+
+  return `<div class="panel"><h2>📜 Совет старейшин</h2>
+    <div class="mk-tabs mk-tabs-3">${tabBtns}</div>
+    ${bodyHtml}
+    <button class="mini danger council-reset" onclick="if(confirm('Сбросить весь прогресс?')){resetGame();render();}">Начать заново</button>
   </div>`;
 }
 
