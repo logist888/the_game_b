@@ -609,9 +609,10 @@ function upgradeLowerCost(key) {
   const lvl = player.lowerWorld.buildings[key] || 0;
   return 150 * (lvl + 1) * (lvl + 1);
 }
-// Длительность стройки целевого уровня: ур.1 ≈ 2 мин … ур.5 ≈ сутки … ур.6 ≈ 5 дней.
+// Длительность стройки целевого уровня. Якорь: ур.10 ≈ 2 дня, мягкий старт.
+// ур.1 ~1 мин · ур.3 ~6 мин · ур.5 ~34 мин · ур.7 ~3.4 ч · ур.10 ~2 дня.
 function lowerBuildSeconds(targetLvl) {
-  return Math.round(120 * Math.pow(5.2, targetLvl - 1));
+  return Math.round(60 * Math.pow(2.423, targetLvl - 1));
 }
 // Завершить готовую стройку (вызывается из recalc и тикера).
 function lowerTick() {
