@@ -415,3 +415,7 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 
 /* кнопка сброса в Совете */
 .council-reset{display:block; margin-top:1.2em}
+
+/* табы покоев героя (5 штук, адаптивно) */
+.mk-tabs-hero{grid-template-columns:repeat(5,1fr)}
+@media(max-width:560px){ .mk-tabs-hero{grid-template-columns:repeat(3,1fr)} }

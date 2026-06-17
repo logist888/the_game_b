@@ -72,10 +72,9 @@ function render() {
     ${resStrip()}`;
 
   const views = {
-    tower: viewTower, stats: viewStats, stairs: viewStairs, daily: viewDaily, lower: viewLower, arena: viewArena,
+    tower: viewTower, stats: viewStats, stairs: viewStairs, lower: viewLower, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
     market: viewMarket, tavern: viewTavern, bank: viewBank, clans: viewClans, council: viewCouncil,
-    codex: viewCodex,
   };
   // баннер с артом здания над страницей (кроме башни и лестницы — у них свои баннеры)
   const noBanner = ['tower', 'stairs'];
@@ -177,7 +176,7 @@ function viewStats() {
     </div>`;
   }).join('')}</div>`;
 
-  const TABS = [['equip', '🛡 Экипировка'], ['bag', `🎒 Рюкзак (${player.inventory.length})`], ['stats', '💪 Статы']];
+  const TABS = [['equip', '🛡 Экипировка'], ['bag', `🎒 Рюкзак (${player.inventory.length})`], ['stats', '💪 Статы'], ['daily', '🎁 Дары дня'], ['codex', '🗂️ Коллекция']];
   const tabBtns = TABS.map(([id, label]) => `<button class="mk-tab ${statsTab === id ? 'on' : ''}" onclick="statsTab='${id}';render()">${label}</button>`).join('');
 
   let bodyHtml = '';
@@ -192,7 +191,7 @@ function viewStats() {
     const items = player.inventory.filter((it) => cat(it) === bagTab);
     const grid = items.length ? `<div class="inv-grid">${items.map(itemCard).join('')}</div>` : '<p class="muted">В этой категории пусто.</p>';
     bodyHtml = bagTabs + grid;
-  } else { // stats
+  } else if (statsTab === 'stats') {
     bodyHtml = `<div class="cols">
       <div class="col"><h3>Статы</h3>${statRows}</div>
       <div class="col">
@@ -201,11 +200,15 @@ function viewStats() {
         <h3>Профессии</h3>${viewProfessions()}
       </div>
     </div>`;
+  } else if (statsTab === 'daily') {
+    bodyHtml = `<h3>🎁 Дары дня</h3>${_dailyBody()}`;
+  } else { // codex
+    bodyHtml = `<h3>🗂️ Коллекция сетов</h3>${_codexBody()}`;
   }
 
   return `<div class="panel">
     <h2>🧝 Покои героя</h2>
-    <div class="mk-tabs mk-tabs-3">${tabBtns}</div>
+    <div class="mk-tabs mk-tabs-hero">${tabBtns}</div>
     ${bodyHtml}
   </div>`;
 }
@@ -311,7 +314,7 @@ function setsSummaryHtml() {
 
 // ---------------- Коллекция: кодекс классовых сетов ----------------
 const CODEX_SLOT_ICONS = { weapon:'⚔️', head:'🪖', body:'🛡', shield:'🔰', ring:'💍', amulet:'📿', earring:'✨' };
-function viewCodex() {
+function _codexBody() {
   const codex = player.codex || {};
   let totalPieces = 0, foundPieces = 0, fullSets = 0;
   const blocks = Object.entries(GEAR_SETS).map(([id, set]) => {
@@ -342,11 +345,8 @@ function viewCodex() {
       <div class="codex-bonuses">${bonuses}</div>
     </div>`;
   }).join('');
-  return `<div class="panel">
-    <h2>🗂️ Коллекция сетов</h2>
-    <p class="muted">Собрано частей: <b>${foundPieces}/${totalPieces}</b> · Полных комплектов: <b>${fullSets}/${Object.keys(GEAR_SETS).length}</b>. Части падают в походах — рарность тем выше, чем выше уровень героя и сложность (на 200% — самые редкие).</p>
-    ${blocks}
-  </div>`;
+  return `<p class="muted">Собрано частей: <b>${foundPieces}/${totalPieces}</b> · Полных комплектов: <b>${fullSets}/${Object.keys(GEAR_SETS).length}</b>. Части падают в походах — рарность тем выше, чем выше уровень героя и сложность (на 200% — самые редкие).</p>
+    ${blocks}`;
 }
 
 // ---------------- Лестница в Небо: выбор похода ----------------
@@ -1146,7 +1146,7 @@ function viewBank() {
     <p class="hint">Души выдаются за ключевые квесты. В полной версии — пополняются за реальные деньги с возможностью вывода (см. бизнес-план GDD).</p>
   </div>`;
 }
-function viewDaily() {
+function _dailyBody() {
   ensureDaily();
   const today = todayKey();
   const d = player.daily;
@@ -1182,14 +1182,11 @@ function viewDaily() {
     ${d.allClaimed ? ' <span class="muted">✅ получен</span>' : ''}
   </div>`;
 
-  return `<div class="panel">
-    <h2>🎁 Дары дня</h2>
-    <p class="muted">Заходи каждый день за наградой (стрик повышает её на 7-й день) и выполняй ежедневные задания. Сброс — каждый день.</p>
+  return `<p class="muted">Заходи каждый день за наградой (стрик повышает её на 7-й день) и выполняй ежедневные задания. Сброс — каждый день.</p>
     ${loginCard}
     <h3>Ежедневные задания</h3>
     ${allCard}
-    ${quests}
-  </div>`;
+    ${quests}`;
 }
 
 function viewCouncil() {
