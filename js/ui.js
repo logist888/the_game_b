@@ -329,7 +329,7 @@ function _codexBody() {
       const it = set.pieces[s];
       const rar = found[s] && RARITIES[found[s]];
       return `<div class="codex-piece ${rar ? '' : 'locked'}"${rar ? ` style="border-color:${rar.color}"` : ''}>
-        <div class="cp-icon">${CODEX_SLOT_ICONS[s] || '❔'}</div>
+        <div class="cp-icon">${rar ? itemArt(it) : `<span class="cp-emoji">${CODEX_SLOT_ICONS[s] || '❔'}</span>`}</div>
         <div class="cp-name"${rar ? ` style="color:${rar.color}"` : ''}>${rar ? esc(it.name) : '???'}</div>
         <div class="cp-rar">${rar ? rar.name : '🔒 не найдено'}</div>
       </div>`;
