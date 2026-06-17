@@ -599,7 +599,7 @@ function recipeCard(r) {
       <div class="rc-in">${chips}</div>
       ${known
         ? (ok
-            ? `<button class="mini" onclick="craft('${r.id}')">создать</button>`
+            ? `<button class="mini" onclick="craft('${r.id}')">создать</button>${maxCraftable(r) > 1 ? ` <button class="mini" onclick="craftMax('${r.id}')">создать ×${maxCraftable(r)}</button>` : ''}`
             : `<span class="muted">⚠ не хватает: ${lacks.join(', ')}</span>`)
         : `<span class="muted">${lockHint}</span>`}
     </div>
