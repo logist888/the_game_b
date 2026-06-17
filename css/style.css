@@ -36,8 +36,8 @@ i{color:var(--muted)}
 .hud-left{flex:1; min-width:200px}
 .hero-name{font-size:1.05rem; font-weight:700; color:var(--gold2)}
 .hero-name .lvl{font-size:.75rem; color:var(--muted); font-weight:400; margin-left:.4em}
-.res-strip{display:flex; gap:.8rem; font-weight:700}
-.res-strip span{background:#1c150e; padding:.3em .6em; border:1px solid var(--line); border-radius:6px}
+.res-strip{display:flex; gap:.6rem; font-weight:700; flex:1 1 100%; min-width:0; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px}
+.res-strip span{background:#1c150e; padding:.3em .6em; border:1px solid var(--line); border-radius:6px; flex:0 0 auto; white-space:nowrap}
 
 /* bars */
 .bar{position:relative; height:16px; background:#120d08; border:1px solid var(--line);
@@ -48,6 +48,8 @@ i{color:var(--muted)}
 .bar.xp .fill{background:linear-gradient(90deg,#3c6b2e,var(--xp))}
 .xpwrap{display:flex; align-items:center; gap:.4em}
 .xplabel{font-size:.65rem; color:var(--xp); min-width:34px; text-transform:uppercase; letter-spacing:.04em}
+.xplabel.l-hp{color:var(--hp)}
+.xplabel.l-mp{color:var(--mp)}
 .xpwrap .bar{flex:1}
 #toast{position:fixed; top:64px; left:50%; transform:translateX(-50%) translateY(-24px); z-index:30;
   background:linear-gradient(180deg,#f0c469,#9c7a2e); color:#1a130c; font-weight:800; font-size:1.05rem;
@@ -276,6 +278,9 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .ref-table th{color:var(--muted);font-weight:600;font-size:.78em;text-transform:uppercase;white-space:nowrap}
 .ref-table td:first-child,.ref-table th:first-child{width:1.6em;text-align:center}
 .ref-table tr.self td{background:rgba(217,164,65,.08);color:var(--gold2)}
+.lb-table .c-lvl{width:2.4em;text-align:center;white-space:nowrap}
+.lb-table .c-xp{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.lb-table .c-kills{width:3em;text-align:right;white-space:nowrap;overflow-wrap:normal}
 
 @media(max-width:640px){
   .log{display:none}
