@@ -922,8 +922,8 @@ function viewMarket() {
       : '<p class="muted">В этой категории пока никто ничего не продаёт.</p>';
     bodyHtml = gearTabs() + cards;
   } else if (marketTab === 'sellItems') {
-    const myItemLots = mine.filter((l) => l.kind === 'item'); // показываем все мои лоты-вещи во всех подтабах
-    const myHtml = myItemLots.length ? `<h4 class="mk-h4">📦 Мои выставленные (${myItemLots.length})</h4><div class="mk-grid">${myItemLots.map((l) => _mkItemCard(l.item,
+    const myItemLots = mine.filter((l) => l.kind === 'item' && _mkGearCat(l.item.slot) === marketGearTab);
+    const myHtml = myItemLots.length ? `<h4 class="mk-h4">📦 Мои выставленные</h4><div class="mk-grid">${myItemLots.map((l) => _mkItemCard(l.item,
       `<div class="mk-card-foot"><span class="mk-price">${l.price} 🪙</span><button class="mini" onclick="cancelLot('${l.id}')">снять</button></div>`)).join('')}</div>` : '';
     const inv = player.inventory.filter((it) => it.slot && _mkGearCat(it.slot) === marketGearTab);
     const invHtml = inv.length ? `<div class="mk-grid">${inv.map((it) => _mkItemCard(it,
