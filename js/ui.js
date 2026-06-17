@@ -66,7 +66,8 @@ function render() {
     <button class="home-btn ${activeView === 'tower' ? 'on' : ''}" onclick="setView('tower')" title="На главную — Вавилонская башня"><img src="img/tower/babylon_tower.png" alt="🏯" onerror="this.replaceWith(document.createTextNode('🏯'))"></button>
     <div class="hud-left">
       <div class="hero-name">${esc(player.name)} <span class="lvl">🎖 Уровень ${player.xpLevel} · ⚔️ опасность ${player.danger}</span></div>
-      ${bar(player.hp, player.maxHp, 'hp')} ${bar(player.mp, player.maxMp, 'mp')}
+      <div class="xpwrap"><span class="xplabel l-hp">HP</span>${bar(player.hp, player.maxHp, 'hp')}</div>
+      <div class="xpwrap"><span class="xplabel l-mp">MP</span>${bar(player.mp, player.maxMp, 'mp')}</div>
       <div class="xpwrap"><span class="xplabel">Опыт</span>${bar(player.xp, xpNeed(player.xpLevel), 'xp')}</div>
     </div>
     ${resStrip()}`;
@@ -1305,14 +1306,14 @@ async function loadLeaderboard() {
     if (!list.length) { board.innerHTML = '<span class="muted">Ещё никто не попал в зал славы</span>'; return; }
     const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
     const myName = player.name || '';
-    board.innerHTML = `<table class="ref-table">
-      <thead><tr><th>#</th><th>Герой</th><th>Уровень</th><th>Опыт</th><th>Убийств</th></tr></thead>
+    board.innerHTML = `<table class="ref-table lb-table">
+      <thead><tr><th>#</th><th>Герой</th><th class="c-lvl">Ур.</th><th class="c-xp">Опыт</th><th class="c-kills">☠️</th></tr></thead>
       <tbody>${list.map((row, i) => `<tr${row.name === myName ? ' class="self"' : ''}>
         <td>${medal(i)}</td>
         <td>${esc(row.name)}</td>
-        <td><b>${row.xpLevel}</b></td>
-        <td>${totalXp(row.xpLevel, row.xp).toLocaleString()}</td>
-        <td>${row.kills || 0}</td>
+        <td class="c-lvl"><b>${row.xpLevel}</b></td>
+        <td class="c-xp">${totalXp(row.xpLevel, row.xp).toLocaleString('ru-RU')}</td>
+        <td class="c-kills">${row.kills || 0}</td>
       </tr>`).join('')}</tbody>
     </table>`;
   } catch (e) {
