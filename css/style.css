@@ -432,3 +432,10 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .lw-gate{background:#2a1f12; border:1px solid var(--gold); border-radius:8px; padding:.6em .8em; margin:.5em 0; font-size:.9rem}
 .lw-build{display:flex; align-items:center; gap:.5em; min-width:160px}
 .lw-build .bar{flex:1; min-width:90px}
+
+/* почасовые лимиты действий */
+.limit-badge{display:inline-block; background:#241a10; border:1px solid var(--line); border-radius:8px;
+  padding:.3em .7em; margin:.2em 0 .5em; font-size:.82rem; color:var(--muted)}
+.limit-badge b{color:var(--gold2)}
+.limit-badge.empty{border-color:var(--danger); color:#d98a82}
+.limit-badge.empty b{color:#d98a82}

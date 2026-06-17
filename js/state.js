@@ -203,6 +203,7 @@ function recalc() {
   if (typeof lowerTick === 'function') lowerTick(); // завершить готовую стройку
   if (!player.loadouts) player.loadouts = [];
   if (!player.achievements) player.achievements = [];
+  if (!player.limits) player.limits = {};
   if (typeof ensureDaily === 'function') ensureDaily();
   if (!player.codex) {
     // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке
