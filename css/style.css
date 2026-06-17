@@ -391,3 +391,21 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .dq-head{font-size:.9rem; margin-bottom:.25em}
 .dq-foot{display:flex; justify-content:space-between; align-items:center; gap:.5em; margin-top:.25em}
 .dq-reward{font-size:.78rem; color:#6fa84f}
+
+/* барахолка: табы и карточки */
+.mk-tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:.4em; margin:.5em 0 .8em}
+.mk-tab{background:#33271a; border:1px solid var(--line); color:var(--txt); border-radius:8px;
+  padding:.45em .3em; font-size:.82rem; line-height:1.15; white-space:normal; word-break:break-word; text-align:center; min-height:2.8em}
+.mk-tab.on{border-color:var(--gold); color:var(--gold2); background:#3f2f1c}
+.mk-subtabs{display:flex; gap:.4em; margin:.2em 0 .6em; flex-wrap:wrap}
+.mk-subtab{background:#2a2018; border:1px solid var(--line); color:var(--txt); border-radius:8px; padding:.3em .7em; font-size:.82rem}
+.mk-subtab.on{border-color:var(--gold); color:var(--gold2)}
+.mk-h4{color:var(--gold); margin:.7em 0 .3em; font-size:.9rem}
+.mk-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.5rem}
+.mk-card{display:flex; gap:.5em; background:var(--panel2); border:1px solid var(--line); border-left-width:3px; border-radius:8px; padding:.5em}
+.mk-card-art{width:56px; height:56px; flex:0 0 auto}
+.mk-card-body{flex:1; min-width:0; display:flex; flex-direction:column; gap:.15em}
+.mk-card-name{font-size:.85rem}
+.mk-card-stats{font-size:.76rem; color:var(--txt)}
+.mk-card-foot{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin-top:.2em}
+.mk-card-foot .mk-input{width:5.5em}
