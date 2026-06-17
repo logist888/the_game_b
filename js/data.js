@@ -552,23 +552,13 @@ const TOWER_BUILDINGS = [
 // base — добыча в час на 1 уровень. Накопление офлайн ограничено LOWER_CAP_HOURS.
 // ----------------------------------------------------------------------------
 const LOWER_BUILDINGS = {
-  city:    { name:'Город',       icon:'🏰', res:'gold',  base:12, desc:'Подати с горожан. Каждый уровень +5% к добыче всех шахт; задаёт потолок уровня остальных построек.' },
+  city:    { name:'Город',       icon:'🏰', res:'gold',  base:12, desc:'Подати с горожан. Каждый уровень +5% к добыче всех шахт.' },
   sawmill: { name:'Лесопилка',   icon:'🪓', res:'log',   base:18, desc:'Смертные валят лес — бревно.' },
   quarry:  { name:'Каменоломня', icon:'🪨', res:'stone', base:16, desc:'Добыча камня.' },
   mine:    { name:'Рудник',      icon:'⛏️', res:'ore',   base:12, desc:'Добыча руды.' },
   farm:    { name:'Ферма',       icon:'🌾', res:'fiber', base:14, desc:'Лён и волокно.' },
-  warehouse:{ name:'Склад',      icon:'📦', res:null,    base:0,  desc:'Расширяет лимит офлайн-накопления: +8 ч за уровень.' },
 };
-const LOWER_ORDER = ['city', 'sawmill', 'quarry', 'mine', 'farm', 'warehouse'];
-
-// Поселения смертных (разные миры со своим ресурсным бонусом). Первое — бесплатно.
-const SETTLEMENTS = [
-  { id:'plain',    name:'Равнинное поселение', icon:'🏞️', bonusRes:null,    bonusPct:0,  unlockLevel:0,  unlockCost:0 },
-  { id:'forest',   name:'Лесная застава',      icon:'🌲', bonusRes:'log',   bonusPct:30, unlockLevel:15, unlockCost:5000 },
-  { id:'mountain', name:'Горный острог',       icon:'⛰️', bonusRes:'stone', bonusPct:30, unlockLevel:20, unlockCost:12000 },
-  { id:'mine_t',   name:'Рудная колония',      icon:'⚒️', bonusRes:'ore',   bonusPct:30, unlockLevel:25, unlockCost:25000 },
-  { id:'field',    name:'Дальний хутор',       icon:'🌻', bonusRes:'fiber', bonusPct:30, unlockLevel:30, unlockCost:40000 },
-];
+const LOWER_ORDER = ['city', 'sawmill', 'quarry', 'mine', 'farm'];
 const LOWER_CAP_BASE = 12;     // базовый лимит офлайн-накопления (часов); +2 ч за уровень Города
 const LOWER_BUILD_LEVEL = 10;  // с какого уровня героя открывается стройка
 const LOWER_CAP_HOURS = 12;    // (совместимость; фактический лимит считает lowerCapHours())

@@ -40,8 +40,7 @@ function newPlayer(name) {
     visitedLocations: [],
     counters: { kills:0, gathered:0, crafted:0, expeditions:0, bossKills:0 },
     // нижний мир: уровни построек смертных + время последнего сбора
-    settlements: [{ id:'plain', buildings: { city:0, sawmill:0, quarry:0, mine:0, farm:0, warehouse:0 }, lastCollect: Date.now(), construction: null }],
-    lowerActive: 0,
+    lowerWorld: { buildings: { city:0, sawmill:0, quarry:0, mine:0, farm:0 }, lastCollect: Date.now(), construction: null },
     loadouts: [],         // сохранённые сборки экипировки (пресеты)
     achievements: [],     // id разблокированных достижений
     daily: null,          // ежедневное: вход (стрик) + задания
@@ -187,22 +186,21 @@ function recalc() {
   if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
   if (!player.counters) player.counters = { kills: player.kills || 0, gathered: player.gathered || 0, crafted: player.crafted || 0, expeditions: player.expeditions || 0, bossKills: 0 };
   if (player.counters.bossKills == null) player.counters.bossKills = 0;
-  // Миграция старого одиночного lowerWorld → массив поселений
-  if (!player.settlements) {
-    const lw = player.lowerWorld || { buildings: {}, lastCollect: Date.now(), construction: null };
-    const b = lw.buildings || {};
-    player.settlements = [{ id: 'plain', buildings: { city:b.city||0, sawmill:b.sawmill||0, quarry:b.quarry||0, mine:b.mine||0, farm:b.farm||0, warehouse:b.warehouse||0 }, lastCollect: lw.lastCollect || Date.now(), construction: lw.construction || null }];
+  // Откат поселений: вернуть прогресс из массива settlements в одиночный lowerWorld
+  if (!player.lowerWorld && Array.isArray(player.settlements) && player.settlements.length) {
+    const sumLv = (s) => LOWER_ORDER.reduce((t, k) => t + ((s.buildings && s.buildings[k]) || 0), 0);
+    const best = player.settlements.reduce((a, s) => (sumLv(s) > sumLv(a) ? s : a));
+    const b = best.buildings || {};
+    player.lowerWorld = { buildings: { city:b.city||0, sawmill:b.sawmill||0, quarry:b.quarry||0, mine:b.mine||0, farm:b.farm||0 }, lastCollect: best.lastCollect || Date.now(), construction: best.construction || null };
   }
-  if (player.lowerActive == null) player.lowerActive = 0;
-  player.settlements.forEach((s) => {
-    if (!s.buildings) s.buildings = {};
-    LOWER_ORDER.forEach((k) => { if (s.buildings[k] == null) s.buildings[k] = 0; });
-    if (s.lastCollect == null) s.lastCollect = Date.now();
-    if (s.construction === undefined) s.construction = null;
-  });
-  if (player.lowerActive >= player.settlements.length) player.lowerActive = 0;
-  delete player.lowerWorld;
-  if (typeof lowerTick === 'function') player.settlements.forEach((s) => lowerTick(s)); // завершить готовые стройки
+  delete player.settlements;
+  delete player.lowerActive;
+  if (!player.lowerWorld) player.lowerWorld = { buildings: { city:0, sawmill:0, quarry:0, mine:0, farm:0 }, lastCollect: Date.now(), construction: null };
+  if (!player.lowerWorld.buildings) player.lowerWorld.buildings = { city:0, sawmill:0, quarry:0, mine:0, farm:0 };
+  LOWER_ORDER.forEach((k) => { if (player.lowerWorld.buildings[k] == null) player.lowerWorld.buildings[k] = 0; });
+  if (player.lowerWorld.lastCollect == null) player.lowerWorld.lastCollect = Date.now();
+  if (player.lowerWorld.construction === undefined) player.lowerWorld.construction = null;
+  if (typeof lowerTick === 'function') lowerTick(); // завершить готовую стройку
   if (!player.loadouts) player.loadouts = [];
   if (!player.achievements) player.achievements = [];
   if (typeof ensureDaily === 'function') ensureDaily();
