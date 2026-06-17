@@ -51,6 +51,7 @@ function newPlayer(name) {
     clan: null,           // кэш данных клана (обновляется с сервера, не авторитетен)
     referredBy: null,
     refRegistered: false,
+    createdAt: Date.now(),   // для окна ввода промокода (7 дней)
     welcomeSeen: false,
     pvp: { wins: 0, losses: 0 },
   };
@@ -209,6 +210,7 @@ function recalc() {
   if (!player.loadouts) player.loadouts = [];
   if (!player.achievements) player.achievements = [];
   if (!player.limits) player.limits = {};
+  if (!player.createdAt) player.createdAt = Date.now();
   if (typeof ensureDaily === 'function') ensureDaily();
   if (!player.codex) {
     // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке

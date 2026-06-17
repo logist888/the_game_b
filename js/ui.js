@@ -1290,29 +1290,73 @@ function achievementsHtml() {
   }).join('')}</div>`;
 }
 
+// Персональный промокод игрока = его Telegram-id в base36 (декодируется обратно в id).
+function myPromoCode() {
+  const id = window.TG_USER && window.TG_USER.id;
+  return id == null ? '' : Number(id).toString(36).toUpperCase();
+}
 function _refSectionHtml() {
   const userId = window.TG_USER && window.TG_USER.id;
-  const botHandle = window.BOT_HANDLE;
-  if (!userId || !botHandle || botHandle === 'YOUR_BOT_USERNAME') return '';
-  // startapp (а не start) — это deep-link именно в Mini App: Telegram передаёт
-  // значение в initDataUnsafe.start_param, по которому регистрируется реферал.
-  const refLink = `https://t.me/${botHandle}?startapp=ref_${userId}`;
+  if (!userId) return '';
+  const code = myPromoCode();
   const refCount = player.refCount || 0;
   const earned = refCount * 200;
+  const already = !!(player.referredBy || player.refRegistered);
+  const windowOpen = Date.now() - (player.createdAt || 0) <= 7 * 86400000;
+  let enterBlock;
+  if (already) enterBlock = '<p class="muted">✅ Промокод пригласившего уже применён.</p>';
+  else if (!windowOpen) enterBlock = '<p class="muted">⌛ Окно ввода промокода (7 дней с создания героя) истекло.</p>';
+  else enterBlock = `<div class="ref-link-row">
+      <input class="ref-link-input" id="promoInput" type="text" maxlength="16" placeholder="промокод пригласившего" oninput="this.value=this.value.toUpperCase()">
+      <button class="mini" onclick="applyPromoCode(document.getElementById('promoInput').value)">Применить</button>
+    </div>
+    <p class="muted">Введи код друга — получишь <b>+500 🪙 и +100 🔥</b>. Только один раз, в течение 7 дней с создания героя.</p>`;
   return `<div class="ref-box">
     <h3>🤝 Реферальная программа</h3>
-    <p class="muted">Приглашайте друзей — за каждого нового игрока получайте <b>+200 🪙</b>. Новый игрок получает бонус <b>+500 🪙 и +100 🔥</b>.</p>
+    <p class="muted">Приглашай друзей промокодом — за каждого нового игрока <b>+200 🪙</b>.</p>
+    <div class="promo-mine">Твой промокод: <b class="promo-code">${esc(code)}</b>
+      <button class="mini" onclick="copyPromo()">📋</button>
+      <button class="mini" onclick="sharePromo()">📤</button>
+    </div>
     <div class="ref-stats">
       <span>Приглашено: <b>${refCount}</b></span>
       <span>Заработано: <b>${earned} 🪙</b></span>
     </div>
-    <div class="ref-link-row">
-      <input class="ref-link-input" id="refLinkInput" readonly value="${esc(refLink)}">
-      <button class="mini" onclick="copyRefLink()">📋 Копировать</button>
-      <button class="mini" onclick="shareRef()">📤 Поделиться</button>
-    </div>
+    <h4 class="mk-h4">Ввести промокод пригласившего</h4>
+    ${enterBlock}
     <div class="ref-board" id="refBoard"><span class="muted">⏳ Загрузка таблицы…</span></div>
   </div>`;
+}
+function applyPromoCode(raw) {
+  if (!window.TG_USER) { showToast('Доступно только в Telegram'); return; }
+  if (player.referredBy || player.refRegistered) { pushLog('❌ Промокод уже вводился.'); render(); return; }
+  if (Date.now() - (player.createdAt || 0) > 7 * 86400000) { pushLog('⌛ Окно ввода промокода (7 дней) истекло.'); render(); return; }
+  const code = String(raw || '').trim().toUpperCase();
+  if (!code) { showToast('Введите промокод'); return; }
+  const id = parseInt(code, 36);
+  if (!Number.isFinite(id) || id <= 0 || Number(id).toString(36).toUpperCase() !== code) { pushLog('❌ Неверный промокод.'); render(); return; }
+  if (String(id) === String(window.TG_USER.id)) { pushLog('❌ Нельзя ввести свой промокод.'); render(); return; }
+  player.referredBy = String(id);
+  player.resources.gold = (player.resources.gold || 0) + 500;
+  player.resources.sparks = (player.resources.sparks || 0) + 100;
+  pushLog('🎁 Промокод принят! +500 🪙 и +100 🔥. Пригласившему начислится награда при синхронизации.');
+  if (typeof showToast === 'function') showToast('🎁 Промокод принят: +500 🪙, +100 🔥');
+  saveGame();
+  if (typeof _pushToCloud === 'function') _pushToCloud();
+  render();
+}
+function copyPromo() {
+  const code = myPromoCode();
+  try { navigator.clipboard.writeText(code).then(() => showToast('📋 Промокод скопирован: ' + code)); }
+  catch (e) { showToast('Промокод: ' + code); }
+}
+function sharePromo() {
+  const code = myPromoCode();
+  const text = `Мой промокод в «Вавилоне»: ${code} — введи его в Совете старейшин и получи +500 🪙 и +100 🔥!`;
+  const link = window.BOT_HANDLE ? `https://t.me/${window.BOT_HANDLE}` : '';
+  if (navigator.share) { navigator.share({ title: 'Проект «Вавилон»', text, url: link }); }
+  else if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.openLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`); }
+  else copyPromo();
 }
 
 function copyRefLink() {

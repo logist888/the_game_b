@@ -442,3 +442,8 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 
 /* кнопка «одеть лучшее» в Кодексе */
 .codex-actions{margin-top:.4em}
+
+/* промокод */
+.promo-mine{display:flex; align-items:center; gap:.5em; flex-wrap:wrap; margin:.4em 0; font-size:.9rem}
+.promo-code{font-size:1.05rem; letter-spacing:.08em; color:var(--gold2); background:#1c150e;
+  border:1px dashed var(--gold); border-radius:6px; padding:.1em .5em}
