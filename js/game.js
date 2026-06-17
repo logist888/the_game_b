@@ -186,6 +186,36 @@ function canCraft(recipe) {
 function craft(recipeId) {
   const r = RECIPES.find((x) => x.id === recipeId);
   if (!r || !canCraft(r)) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
+  _craftOnce(r, false);
+  checkQuests();
+  render();
+}
+// Сколько изделий можно создать из текущих ресурсов (с учётом ингредиентов, искр и топлива)
+function maxCraftable(r) {
+  let max = Infinity;
+  Object.entries(r.in || {}).forEach(([k, v]) => { max = Math.min(max, Math.floor((player.resources[k] || 0) / v)); });
+  if (r.sparks) max = Math.min(max, Math.floor((player.resources.sparks || 0) / r.sparks));
+  if (r.fuel) {
+    const fuelUnits = (player.resources.coal || 0) + Math.floor((player.resources.log || 0) / 6); // 1 уголь или 6 брёвен = 1 топливо
+    max = Math.min(max, Math.floor(fuelUnits / r.fuel));
+  }
+  return Number.isFinite(max) ? Math.max(0, max) : 0;
+}
+// Создать максимум изделий из имеющихся ресурсов
+function craftMax(recipeId) {
+  const r = RECIPES.find((x) => x.id === recipeId);
+  if (!r) return;
+  const n = maxCraftable(r);
+  if (n <= 0) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
+  let made = 0;
+  while (made < n && canCraft(r)) { _craftOnce(r, true); made++; }
+  const outName = r.out.item ? r.out.item.name : RESOURCES[r.out.res].name;
+  pushLog(`🔧 Создано ×${made}: ${outName}.`);
+  checkQuests();
+  render();
+}
+// Один акт крафта (без render/checkQuests). quiet=true — без лога на каждое изделие.
+function _craftOnce(r, quiet) {
   Object.entries(r.in || {}).forEach(([k, v]) => spendRes(k, v));
   if (r.sparks) spendRes('sparks', r.sparks);
   let quality = 1;
@@ -201,7 +231,7 @@ function craft(recipeId) {
     // мастер-плавильщик/столяр изредка получает лишнюю единицу ресурса
     if (chance((profLevel(r.ws) - 1) * 3)) qty += 1;
     addRes(r.out.res, qty);
-    pushLog(`🔧 Создано: ${qty}× ${RESOURCES[r.out.res].name}.`);
+    if (!quiet) pushLog(`🔧 Создано: ${qty}× ${RESOURCES[r.out.res].name}.`);
   } else if (r.out.item) {
     const item = JSON.parse(JSON.stringify(r.out.item));
     if (item.armor) item.armor = Math.round(item.armor * quality);
@@ -209,14 +239,12 @@ function craft(recipeId) {
     item.durability = [1000, 1000];
     addItem(item);
     const tags = [quality >= 1.15 ? 'закал. углём' : '', mastery > 1.05 ? `мастерство ×${mastery.toFixed(2)}` : ''].filter(Boolean).join(', ');
-    pushLog(`🔧 Создан предмет: ${item.name}${tags ? ` (${tags})` : ''}.`);
+    if (!quiet) pushLog(`🔧 Создан предмет: ${item.name}${tags ? ` (${tags})` : ''}.`);
   }
   // опыт профессии: ресурсы +2, снаряжение +5, легендарное +20
   const legendary = (r.sparks || 0) >= 300;
   gainProfXp(r.ws, r.out.res ? 2 : legendary ? 20 : 5);
   player.counters.crafted += 1;
-  checkQuests();
-  render();
 }
 
 // --- Кузница сетов: ковка частей и перековка рарности ---
