@@ -442,6 +442,40 @@ function saveLoadout(name) {
   saveGame();
   render();
 }
+// «ценность» предмета для авто-подбора лучшего в слот (статы уже учитывают рарность и заточку).
+function itemScore(it) {
+  let s = 0;
+  if (it.dmg) s += (it.dmg[0] + it.dmg[1]) / 2;
+  if (it.armor) s += it.armor;
+  if (it.bonus) s += Object.values(it.bonus).reduce((a, b) => a + b, 0);
+  return s;
+}
+// Надеть комплект сета лучшими имеющимися частями (по характеристикам).
+function equipBestSet(setId) {
+  const set = GEAR_SETS[setId];
+  if (!set) return;
+  const pool = [...player.inventory];
+  Object.values(player.equip).forEach((it) => { if (it) pool.push(it); });
+  const slots = Object.keys(set.pieces);
+  const newEquip = { ...player.equip };
+  let picked = 0;
+  slots.forEach((slot) => {
+    const cands = pool.filter((it) => it.set === setId && it.slot === slot);
+    if (!cands.length) return;
+    cands.sort((a, b) => itemScore(b) - itemScore(a));
+    newEquip[slot] = cands[0];
+    picked++;
+  });
+  if (!picked) { pushLog(`❌ Нет частей сета «${set.name}» в наличии.`); render(); return; }
+  const equippedIds = new Set(Object.values(newEquip).filter(Boolean).map((x) => x.id));
+  player.equip = newEquip;
+  player.inventory = pool.filter((x) => !equippedIds.has(x.id));
+  recalc();
+  pushLog(`🎽 Надет комплект «${set.name}» — лучшие части (${picked}/${slots.length}).`);
+  saveGame();
+  render();
+}
+
 function applyLoadout(idx) {
   const lo = player.loadouts && player.loadouts[idx];
   if (!lo) return;

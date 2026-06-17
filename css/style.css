@@ -439,3 +439,6 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .limit-badge b{color:var(--gold2)}
 .limit-badge.empty{border-color:var(--danger); color:#d98a82}
 .limit-badge.empty b{color:#d98a82}
+
+/* кнопка «одеть лучшее» в Кодексе */
+.codex-actions{margin-top:.4em}

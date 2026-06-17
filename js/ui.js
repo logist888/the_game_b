@@ -317,6 +317,7 @@ function setsSummaryHtml() {
 const CODEX_SLOT_ICONS = { weapon:'⚔️', head:'🪖', body:'🛡', shield:'🔰', ring:'💍', amulet:'📿', earring:'✨' };
 function _codexBody() {
   const codex = player.codex || {};
+  const ownAll = [...player.inventory, ...Object.values(player.equip).filter(Boolean)];
   let totalPieces = 0, foundPieces = 0, fullSets = 0;
   const blocks = Object.entries(GEAR_SETS).map(([id, set]) => {
     const slots = Object.keys(set.pieces);
@@ -337,6 +338,8 @@ function _codexBody() {
     }).join('');
     const bonuses = [['2', 2], ['4', 4], ['full', total]].filter(([k]) => set.bonuses[k]).map(([k, need]) =>
       `<div class="set-bonus on"><b>(${need === total ? 'полный' : need})</b> ${esc(set.bonuses[k].desc)}</div>`).join('');
+    const ownedN = ownAll.filter((it) => it.set === id).length;
+    const equipBtn = ownedN ? `<button class="mini" onclick="equipBestSet('${id}')">🎽 одеть лучшее (${ownedN})</button>` : '';
     return `<div class="codex-set">
       <div class="codex-head">
         <span class="codex-title">${set.icon} ${esc(set.name)}</span>
@@ -344,6 +347,7 @@ function _codexBody() {
       </div>
       <div class="codex-pieces">${pieces}</div>
       <div class="codex-bonuses">${bonuses}</div>
+      ${equipBtn ? `<div class="codex-actions">${equipBtn}</div>` : ''}
     </div>`;
   }).join('');
   return `<p class="muted">Собрано частей: <b>${foundPieces}/${totalPieces}</b> · Полных комплектов: <b>${fullSets}/${Object.keys(GEAR_SETS).length}</b>. Части падают в походах — рарность тем выше, чем выше уровень героя и сложность (на 200% — самые редкие).</p>
