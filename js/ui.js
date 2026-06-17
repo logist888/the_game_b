@@ -386,6 +386,15 @@ function _oppCardHtml(opp, i) {
 // ---------------- Нижний мир: города и шахты смертных ----------------
 let _lowerTimer = null;
 // HTML строки накопления (для живого обновления без полного render)
+// Бейдж почасового лимита действия (добыча/крафт).
+function limitBadge(kind) {
+  const left = limitRemaining(kind);
+  const cap = limitCap(kind);
+  const label = kind === 'gather' ? '⛏️ Добыча' : '🔧 Производство';
+  const low = left === 0;
+  return `<div class="limit-badge ${low ? 'empty' : ''}">${label}: осталось <b>${left}</b> из ${cap} в час${low ? ` · сброс через ${limitResetMins(kind)} мин` : ''}</div>`;
+}
+
 function lowerPendingHtml() {
   const totalRate = LOWER_ORDER.reduce((a, k) => a + lowerProdPerHour(k), 0);
   if (totalRate === 0) return '<span class="muted">постройки ещё не возведены — добывай руками ниже</span>';
@@ -464,6 +473,7 @@ function viewLower() {
     </div>
     <h3>⛏️ Добыть руками (бесплатно)</h3>
     <p class="muted">Спустись к смертным и собери ресурсы 1 уровня сам — бесплатно, удача и навык дают шанс добыть больше.</p>
+    ${limitBadge('gather')}
     <div class="gather-grid">${GATHER_TABLE.map((g) => `<button class="mini" onclick="gather('${g.res}')">${RESOURCES[g.res].icon} ${g.name}</button>`).join('')}</div>
     <h3>🏗️ Постройки смертных${con ? ` <span class="muted">— строится ${LOWER_BUILDINGS[con.key].name}</span>` : ''}</h3>
     <div class="lw-list">${rows}</div>
@@ -659,6 +669,7 @@ function viewWorkshops() {
   return `<div class="panel">
     <h2>🔨 Мастерские</h2>
     <p class="muted">Переработка ресурсов 1→2 уровня и создание снаряжения. Уголь как топливо повышает качество (закалка).</p>
+    ${limitBadge('craft')}
     ${resInventory()}
     ${setsForgeHtml()}
     ${cats.map(([t, rs]) => `<h3>${t}</h3><div class="recipe-grid">${rs.map(recipeCard).join('')}</div>`).join('')}
@@ -713,6 +724,7 @@ function viewLab() {
   return `<div class="panel">
     <h2>⚗️ Лаборатории</h2>
     <p class="muted">Алхимия: эликсиры (лечат в бою), зелья (бросаются во врага), мази (усиления вне боя).</p>
+    ${limitBadge('craft')}
     ${resInventory()}
     <div class="recipe-grid">${rs.map(recipeCard).join('')}</div>
   </div>`;

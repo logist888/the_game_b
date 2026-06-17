@@ -151,6 +151,31 @@ function checkAchievements() {
   });
 }
 
+// --- Почасовые лимиты действий (растут с уровнем героя) ---
+// gather — ручная добыча, craft — производство вещей. Окно сбрасывается раз в час.
+function limitCap(kind) {
+  const lvl = player.xpLevel || 1;
+  if (kind === 'gather') return 20 + lvl * 3;
+  if (kind === 'craft') return 10 + lvl * 2;
+  return 9999;
+}
+function limitState(kind) {
+  if (!player.limits) player.limits = {};
+  if (!player.limits[kind]) player.limits[kind] = { count: 0, hourStart: Date.now() };
+  const st = player.limits[kind];
+  if (Date.now() - st.hourStart >= 3600000) { st.count = 0; st.hourStart = Date.now(); }
+  return st;
+}
+function limitRemaining(kind) { return Math.max(0, limitCap(kind) - limitState(kind).count); }
+function limitResetMins(kind) { const st = limitState(kind); return Math.max(1, Math.ceil((3600000 - (Date.now() - st.hourStart)) / 60000)); }
+function useLimit(kind, n) {
+  n = n || 1;
+  const st = limitState(kind);
+  if (st.count + n > limitCap(kind)) return false;
+  st.count += n;
+  return true;
+}
+
 // --- Добыча ресурсов «своими руками» (квест «Заготовщик») ---
 const GATHER_TABLE = [
   { res:'log', name:'Срубить дерево' }, { res:'stone', name:'Наколоть камня' },
@@ -162,6 +187,7 @@ const GATHER_TABLE = [
 function gather(res) {
   const entry = GATHER_TABLE.find((g) => g.res === res);
   if (!entry) return;
+  if (!useLimit('gather', 1)) { pushLog(`⛔ Лимит добычи на час исчерпан (${limitCap('gather')}/час). Сброс через ${limitResetMins('gather')} мин.`); render(); return; }
   // удача и навык дают шанс добыть больше
   let qty = rnd(1, 3);
   if (chance(player.derived.luk)) qty += rnd(1, 2);
@@ -186,6 +212,7 @@ function canCraft(recipe) {
 function craft(recipeId) {
   const r = RECIPES.find((x) => x.id === recipeId);
   if (!r || !canCraft(r)) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
+  if (!useLimit('craft', 1)) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
   _craftOnce(r, false);
   checkQuests();
   render();
@@ -205,12 +232,16 @@ function maxCraftable(r) {
 function craftMax(recipeId) {
   const r = RECIPES.find((x) => x.id === recipeId);
   if (!r) return;
-  const n = maxCraftable(r);
-  if (n <= 0) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
+  const byRes = maxCraftable(r);
+  if (byRes <= 0) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
+  const left = limitRemaining('craft');
+  if (left <= 0) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
+  const n = Math.min(byRes, left);
   let made = 0;
   while (made < n && canCraft(r)) { _craftOnce(r, true); made++; }
+  useLimit('craft', made);
   const outName = r.out.item ? r.out.item.name : RESOURCES[r.out.res].name;
-  pushLog(`🔧 Создано ×${made}: ${outName}.`);
+  pushLog(`🔧 Создано ×${made}: ${outName}.${made < byRes ? ` (лимит ${limitCap('craft')}/час; осталось 0)` : ''}`);
   checkQuests();
   render();
 }
@@ -291,6 +322,7 @@ function craftSetPiece(setId, slot) {
   if (!player.codex || !player.codex[setId]) { pushLog('❌ Сначала найди хотя бы одну часть этого сета в походе.'); render(); return; }
   const cost = setCraftCost(setId);
   if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для ковки.'); render(); return; }
+  if (!useLimit('craft', 1)) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
   payCost(cost);
   const it = makeSetItem(setId, slot, 'common');
   addItem(it);
