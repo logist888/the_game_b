@@ -418,6 +418,10 @@ function viewLower() {
       <div>📦 Накоплено: <span id="lw-pending">${lowerPendingHtml()}</span></div>
       <button class="big" onclick="collectLower()">Собрать урожай</button>
     </div>
+    <h3>⛏️ Добыть руками (бесплатно)</h3>
+    <p class="muted">Спустись к смертным и собери ресурсы 1 уровня сам — бесплатно, удача и навык дают шанс добыть больше.</p>
+    <div class="gather-grid">${GATHER_TABLE.map((g) => `<button class="mini" onclick="gather('${g.res}')">${RESOURCES[g.res].icon} ${g.name}</button>`).join('')}</div>
+    <h3>🏗️ Постройки смертных</h3>
     <div class="lw-list">${rows}</div>
   </div>`;
 }
@@ -673,7 +677,7 @@ function viewLab() {
 function resInventory() {
   const items = Object.keys(RESOURCES).filter((k) => !RESOURCES[k].special && (player.resources[k] || 0) > 0)
     .map((k) => `<span class="res-chip">${RESOURCES[k].icon} ${RESOURCES[k].name}: <b>${player.resources[k]}</b></span>`).join('');
-  return `<div class="res-inv">${items || '<span class="muted">Нет ресурсов — добудьте в Магазине или в Лестнице вниз.</span>'}</div>`;
+  return `<div class="res-inv">${items || '<span class="muted">Нет ресурсов — добудьте в Нижнем мире или в походах.</span>'}</div>`;
 }
 
 // ---------------- Магазин ----------------
@@ -715,8 +719,6 @@ function viewShop() {
     <h3>🪖 Снаряжение за золото</h3>
     <p class="muted">Готовое снаряжение без крафта — оденься хоть сейчас. Легендарки тут не продаются (их крафтят/добывают).</p>
     ${gearHtml}
-    <h3>Добыть руками (бесплатно)</h3>
-    <div class="gather-grid">${GATHER_TABLE.map((g) => `<button class="mini" onclick="gather('${g.res}')">${RESOURCES[g.res].icon} ${g.name}</button>`).join('')}</div>
     <h3>Ресурсы</h3>${buy}
     ${resInventory()}
   </div>`;
