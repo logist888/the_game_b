@@ -573,10 +573,14 @@ function lowerProdPerHour(key) {
   if (!lvl) return 0;
   return b.res === 'gold' ? b.base * lvl : Math.round(b.base * lvl * lowerCityMult());
 }
-// Сколько часов накоплено с последнего сбора (с потолком LOWER_CAP_HOURS).
+// Лимит офлайн-накопления растёт с уровнем Города (+2 ч за уровень).
+function lowerCapHours() {
+  return LOWER_CAP_BASE + (player.lowerWorld.buildings.city || 0) * 2;
+}
+// Сколько часов накоплено с последнего сбора (с динамическим потолком).
 function lowerElapsedHours() {
   const last = player.lowerWorld.lastCollect || Date.now();
-  return Math.min(LOWER_CAP_HOURS, Math.max(0, (Date.now() - last) / 3600000));
+  return Math.min(lowerCapHours(), Math.max(0, (Date.now() - last) / 3600000));
 }
 // Готовый к сбору урожай по ресурсам.
 function lowerPending() {
@@ -600,23 +604,81 @@ function collectLower() {
   checkQuests();
   render();
 }
-// Стоимость улучшения постройки (золото, квадратичный рост).
+// Стоимость постройки/улучшения (золото, квадратичный рост по целевому уровню).
 function upgradeLowerCost(key) {
   const lvl = player.lowerWorld.buildings[key] || 0;
   return 150 * (lvl + 1) * (lvl + 1);
 }
-function upgradeLower(key) {
-  if (!LOWER_BUILDINGS[key]) return;
+// Длительность стройки целевого уровня: ур.1 ≈ 2 мин … ур.5 ≈ сутки … ур.6 ≈ 5 дней.
+function lowerBuildSeconds(targetLvl) {
+  return Math.round(120 * Math.pow(5.2, targetLvl - 1));
+}
+// Завершить готовую стройку (вызывается из recalc и тикера).
+function lowerTick() {
+  const c = player.lowerWorld && player.lowerWorld.construction;
+  if (!c) return false;
+  if (Date.now() >= c.finishAt) {
+    player.lowerWorld.buildings[c.key] = c.targetLvl;
+    player.lowerWorld.construction = null;
+    pushLog(`🏗️ ${LOWER_BUILDINGS[c.key].name} достроен до уровня ${c.targetLvl}!`);
+    if (typeof showToast === 'function') showToast(`🏗️ ${LOWER_BUILDINGS[c.key].name} ур.${c.targetLvl} готов!`);
+    return true;
+  }
+  return false;
+}
+// Можно ли начать стройку постройки key: вернёт {ok} или {ok:false, why}.
+function canBuildLower(key) {
+  if (!LOWER_BUILDINGS[key]) return { ok: false, why: 'нет такой постройки' };
+  if ((player.xpLevel || 1) < LOWER_BUILD_LEVEL) return { ok: false, why: `стройка с ${LOWER_BUILD_LEVEL} ур. героя` };
+  if (player.lowerWorld.construction) return { ok: false, why: 'стройка уже идёт' };
+  const target = (player.lowerWorld.buildings[key] || 0) + 1;
+  const cityLvl = player.lowerWorld.buildings.city || 0;
+  if (key !== 'city' && target > cityLvl) return { ok: false, why: `нужен Город ур. ${target}` };
+  if (!hasRes('gold', upgradeLowerCost(key))) return { ok: false, why: 'мало золота' };
+  return { ok: true };
+}
+function startLowerBuild(key) {
+  const chk = canBuildLower(key);
+  if (!chk.ok) { pushLog(`🏗️ Нельзя строить: ${chk.why}.`); render(); return; }
   const cost = upgradeLowerCost(key);
-  if (!hasRes('gold', cost)) { pushLog('🪙 Недостаточно золота на постройку.'); render(); return; }
-  // при улучшении сначала фиксируем накопленный урожай, чтобы не потерять
+  const target = (player.lowerWorld.buildings[key] || 0) + 1;
+  // фиксируем накопленный урожай, чтобы не потерять при смене состояния
   const pending = lowerPending();
   Object.entries(pending).forEach(([res, qty]) => addRes(res, qty));
   if (Object.keys(pending).length) player.lowerWorld.lastCollect = Date.now();
   spendRes('gold', cost);
-  player.lowerWorld.buildings[key] = (player.lowerWorld.buildings[key] || 0) + 1;
-  pushLog(`🏗️ ${LOWER_BUILDINGS[key].name} улучшен до уровня ${player.lowerWorld.buildings[key]} за ${cost} 🪙.`);
+  const dur = lowerBuildSeconds(target) * 1000;
+  player.lowerWorld.construction = { key, targetLvl: target, startAt: Date.now(), finishAt: Date.now() + dur };
+  pushLog(`🏗️ Начата стройка: ${LOWER_BUILDINGS[key].name} → ур. ${target} (${fmtDuration(dur / 1000)}). Списано ${cost} 🪙.`);
+  saveGame();
   render();
+}
+// Ускорить текущую стройку за Души (премиум).
+function lowerRushCost() {
+  const c = player.lowerWorld.construction;
+  if (!c) return 0;
+  const remain = Math.max(0, c.finishAt - Date.now()) / 3600000; // часов
+  return Math.max(1, Math.ceil(remain / 4)); // 1 Душа за каждые 4 ч остатка
+}
+function rushLowerBuild() {
+  const c = player.lowerWorld.construction;
+  if (!c) return;
+  const cost = lowerRushCost();
+  if (!hasRes('souls', cost)) { pushLog(`👻 Нужно ${cost} Душ для ускорения.`); render(); return; }
+  spendRes('souls', cost);
+  c.finishAt = Date.now();
+  lowerTick();
+  saveGame();
+  render();
+}
+// Человекочитаемая длительность в секундах.
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (d) return `${d}д ${h}ч`;
+  if (h) return `${h}ч ${m}м`;
+  if (m) return `${m}м ${s}с`;
+  return `${s}с`;
 }
 
 // --- Походы: выбор мира → локации → бой ---

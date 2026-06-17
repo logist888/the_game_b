@@ -387,12 +387,13 @@ function _oppCardHtml(opp, i) {
 let _lowerTimer = null;
 // HTML строки накопления (для живого обновления без полного render)
 function lowerPendingHtml() {
+  const totalRate = LOWER_ORDER.reduce((a, k) => a + lowerProdPerHour(k), 0);
+  if (totalRate === 0) return '<span class="muted">постройки ещё не возведены — добывай руками ниже</span>';
   const pending = lowerPending();
   const entries = Object.entries(pending);
-  const full = lowerElapsedHours() >= LOWER_CAP_HOURS;
+  const full = lowerElapsedHours() >= lowerCapHours();
   if (!entries.length) {
-    // суммарная скорость в час, чтобы было видно, что добыча идёт
-    const rate = LOWER_ORDER.map((k) => `${lowerProdPerHour(k)} ${RESOURCES[LOWER_BUILDINGS[k].res].icon}`).join(' · ');
+    const rate = LOWER_ORDER.filter((k) => lowerProdPerHour(k) > 0).map((k) => `${lowerProdPerHour(k)} ${RESOURCES[LOWER_BUILDINGS[k].res].icon}`).join(' · ');
     return `<span class="muted">копится… ⏳ ${rate} в час</span>`;
   }
   const str = entries.map(([res, qty]) => `${RESOURCES[res].icon} ${qty} ${RESOURCES[res].name}`).join(' · ');
@@ -403,19 +404,41 @@ function startLowerTicker() {
   clearInterval(_lowerTimer);
   _lowerTimer = setInterval(() => {
     if (activeView !== 'lower') { clearInterval(_lowerTimer); _lowerTimer = null; return; }
+    const con = player.lowerWorld.construction;
+    if (con && Date.now() >= con.finishAt) { lowerTick(); saveGame(); render(); return; } // достроилось — перерисуем
     const el = document.getElementById('lw-pending');
     if (el) el.innerHTML = lowerPendingHtml();
-  }, 2000);
+    const cd = document.getElementById('lw-countdown');
+    if (cd && con) cd.textContent = fmtDuration((con.finishAt - Date.now()) / 1000);
+  }, 1000);
 }
 
 function viewLower() {
   const lw = player.lowerWorld;
+  const heroLvl = player.xpLevel || 1;
+  const gated = heroLvl < LOWER_BUILD_LEVEL;
+  const con = lw.construction;
   const rows = LOWER_ORDER.map((k) => {
     const b = LOWER_BUILDINGS[k];
     const lvl = lw.buildings[k] || 0;
     const perHour = lowerProdPerHour(k);
-    const cost = upgradeLowerCost(k);
-    const note = k === 'city' ? `<div class="lw-note">⬆ добыча шахт: +${(lvl * 5)}%</div>` : '';
+    const note = k === 'city' ? `<div class="lw-note">⬆ +${lvl * 5}% к шахтам · лимит склада ${lowerCapHours()} ч</div>` : '';
+    let action;
+    if (con && con.key === k) {
+      const dur = con.finishAt - con.startAt;
+      const pct = Math.max(0, Math.min(100, (1 - (con.finishAt - Date.now()) / dur) * 100));
+      action = `<div class="lw-build">
+        <div class="bar tiny"><div class="fill" style="width:${pct}%"></div><span id="lw-countdown">${fmtDuration((con.finishAt - Date.now()) / 1000)}</span></div>
+        <button class="mini" onclick="rushLowerBuild()" title="Ускорить за Души">⚡ ${lowerRushCost()} 👻</button>
+      </div>`;
+    } else {
+      const target = lvl + 1;
+      const cost = upgradeLowerCost(k);
+      const dur = fmtDuration(lowerBuildSeconds(target));
+      const chk = canBuildLower(k);
+      const label = lvl === 0 ? 'построить' : `ур. ${target}`;
+      action = `<button class="mini" ${chk.ok ? '' : 'disabled'} onclick="startLowerBuild('${k}')" title="${chk.ok ? ('⏳ ' + dur) : esc(chk.why)}">🏗️ ${label} · ${cost}🪙 · ${dur}</button>`;
+    }
     return `<div class="lw-row">
       <div class="lw-icon">${b.icon}</div>
       <div class="lw-body">
@@ -424,13 +447,17 @@ function viewLower() {
         <div class="lw-rate">⏳ ${perHour} ${RESOURCES[b.res].icon}/час</div>
         ${note}
       </div>
-      <button class="mini" ${hasRes('gold', cost) ? '' : 'disabled'} onclick="upgradeLower('${k}')">⬆ ${cost} 🪙</button>
+      ${action}
     </div>`;
   }).join('');
 
+  const gateBanner = gated
+    ? `<div class="lw-gate">🔒 Стройка построек откроется на <b>${LOWER_BUILD_LEVEL}</b> уровне героя (сейчас ${heroLvl}). Пока добывай ресурсы руками ниже.</div>`
+    : `<p class="muted">Возводи постройки (это занимает время — чем выше уровень, тем дольше) и собирай урожай. Город — стержень: его уровень задаёт потолок остальных построек, бустит шахты и расширяет склад. Строится одно здание за раз; можно ускорить за Души.</p>`;
+
   return `<div class="panel">
     <h2>🏘️ Нижний мир</h2>
-    <p class="muted">Смертные трудятся на тебя круглые сутки. Возвращайся и собирай урожай. Улучшай постройки за золото; Город поднимает добычу всех шахт. Накопление ограничено ${LOWER_CAP_HOURS} ч — не давай складам простаивать.</p>
+    ${gateBanner}
     <div class="lw-collect">
       <div>📦 Накоплено: <span id="lw-pending">${lowerPendingHtml()}</span></div>
       <button class="big" onclick="collectLower()">Собрать урожай</button>
@@ -438,7 +465,7 @@ function viewLower() {
     <h3>⛏️ Добыть руками (бесплатно)</h3>
     <p class="muted">Спустись к смертным и собери ресурсы 1 уровня сам — бесплатно, удача и навык дают шанс добыть больше.</p>
     <div class="gather-grid">${GATHER_TABLE.map((g) => `<button class="mini" onclick="gather('${g.res}')">${RESOURCES[g.res].icon} ${g.name}</button>`).join('')}</div>
-    <h3>🏗️ Постройки смертных</h3>
+    <h3>🏗️ Постройки смертных${con ? ` <span class="muted">— строится ${LOWER_BUILDINGS[con.key].name}</span>` : ''}</h3>
     <div class="lw-list">${rows}</div>
   </div>`;
 }
