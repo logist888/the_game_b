@@ -7,6 +7,8 @@ let expedSel = { world: 0, loc: 0, diff: 100 };
 let marketLots = [];
 let marketLoaded = false;
 let marketBusy = false;
+let marketTab = 'buyItems';   // buyItems | sellItems | buyRes | sellRes
+let marketGearTab = 'weapon'; // weapon | armor | jewelry
 let clansList = [];
 let clansLoaded = false;
 let clanBusy = false;
@@ -865,6 +867,36 @@ function _lotLabel(lot) {
   return `⚔️ ${esc(it.name)}${s.length ? ` <span class="muted">(${s.join(' · ')})</span>` : ''}`;
 }
 
+// категория слота для табов барахолки
+function _mkGearCat(slot) {
+  if (slot === 'weapon') return 'weapon';
+  if (['head', 'body', 'shield'].includes(slot)) return 'armor';
+  if (['ring', 'amulet', 'earring'].includes(slot)) return 'jewelry';
+  return 'other';
+}
+function _mkItemStats(it) {
+  const s = [];
+  if (it.dmg) s.push(`урон ${it.dmg[0]}–${it.dmg[1]}`);
+  if (it.armor) s.push(`броня ${it.armor}`);
+  if (it.bonus) s.push(Object.entries(it.bonus).map(([k, v]) => `+${v} ${STATS[k] ? STATS[k].name : k}`).join(', '));
+  if (it.req) s.push('<span class="muted">треб: ' + Object.entries(it.req).map(([k, v]) => `${STATS[k] ? STATS[k].name : k} ${v}`).join(', ') + '</span>');
+  return s.filter(Boolean).join(' · ');
+}
+// карточка вещи на рынке (с артом, рарностью, заточкой, статами) + блок действий
+function _mkItemCard(it, action) {
+  const rar = it.rarity && RARITIES[it.rarity];
+  const set = it.set && GEAR_SETS[it.set];
+  return `<div class="mk-card${rar ? ' rar' : ''}"${rar ? ` style="border-left-color:${rar.color}"` : ''}>
+    <div class="mk-card-art">${itemArt(it)}</div>
+    <div class="mk-card-body">
+      <div class="mk-card-name"><b${rar ? ` style="color:${rar.color}"` : ''}>${esc(it.name)}${plusLabel(it)}</b>${rar ? ` <span class="rar-tag" style="color:${rar.color}">${rar.name}</span>` : ''}</div>
+      ${set ? `<div class="ic-set">🎽 ${esc(set.name)}</div>` : ''}
+      <div class="mk-card-stats">${_mkItemStats(it)}</div>
+      ${action}
+    </div>
+  </div>`;
+}
+
 function viewMarket() {
   if (!_marketOnline()) {
     return `<div class="panel"><h2>🏷️ Барахолка</h2>
@@ -874,50 +906,56 @@ function viewMarket() {
   const mine = marketLots.filter((l) => String(l.sellerId) === myId);
   const others = marketLots.filter((l) => String(l.sellerId) !== myId);
 
-  const myHtml = mine.length ? mine.map((l) => `<div class="mk-lot">
-    <span>${_lotLabel(l)}</span>
-    <span class="mk-price">${l.price} 🪙</span>
-    <button class="mini" onclick="cancelLot('${l.id}')">снять</button>
-  </div>`).join('') : '<p class="muted">У вас нет активных лотов.</p>';
+  const TABS = [['buyItems', '🛒 Купить вещи'], ['sellItems', '🏷️ Продать вещи'], ['buyRes', '📥 Купить ресурсы'], ['sellRes', '📤 Продать ресурсы']];
+  const tabBtns = TABS.map(([id, label]) => `<button class="mk-tab ${marketTab === id ? 'on' : ''}" onclick="marketTab='${id}';render()">${label}</button>`).join('');
+  const GTABS = [['weapon', '⚔️ Оружие'], ['armor', '🛡 Доспехи'], ['jewelry', '💍 Бижутерия']];
+  const gearTabs = () => `<div class="mk-subtabs">${GTABS.map(([id, label]) => `<button class="mk-subtab ${marketGearTab === id ? 'on' : ''}" onclick="marketGearTab='${id}';render()">${label}</button>`).join('')}</div>`;
 
-  const buyHtml = others.length ? others.map((l) => `<div class="mk-lot">
-    <span>${_lotLabel(l)} <span class="muted">— ${esc(l.sellerName || 'Полубог')}</span></span>
-    <span class="mk-price">${l.price} 🪙</span>
-    <button class="mini" ${hasRes('gold', l.price) ? '' : 'disabled'} onclick="buyLot('${l.id}')">купить</button>
-  </div>`).join('') : '<p class="muted">Пока никто ничего не продаёт. Выставьте лот первым!</p>';
-
-  // Ресурсы на продажу
-  const sellRes = Object.keys(RESOURCES).filter((k) => !RESOURCES[k].special && (player.resources[k] || 0) > 0)
-    .map((k) => `<div class="mk-sell-row">
-      <span>${RESOURCES[k].icon} ${RESOURCES[k].name} <span class="muted">(есть ${player.resources[k]})</span></span>
-      <input id="mk-qty-${k}" class="mk-input" type="number" min="1" max="${player.resources[k]}" placeholder="кол-во">
-      <input id="mk-price-${k}" class="mk-input" type="number" min="1" placeholder="цена 🪙">
-      <button class="mini" onclick="listResourceLot('${k}')">выставить</button>
-    </div>`).join('') || '<p class="muted">Нет ресурсов для продажи.</p>';
-
-  // Снаряжение из рюкзака (только предметы со слотом)
-  const sellItems = player.inventory.filter((it) => it.slot).map((it) => `<div class="mk-sell-row">
-    <span>${esc(it.name)}</span>
-    <input id="mk-iprice-${it.id}" class="mk-input" type="number" min="1" placeholder="цена 🪙">
-    <button class="mini" onclick="listItemLot(${it.id})">выставить</button>
-  </div>`).join('') || '<p class="muted">В рюкзаке нет снаряжения на продажу.</p>';
+  let bodyHtml = '';
+  if (marketTab === 'buyItems') {
+    const lots = others.filter((l) => l.kind === 'item' && _mkGearCat(l.item.slot) === marketGearTab);
+    const cards = lots.length ? `<div class="mk-grid">${lots.map((l) => _mkItemCard(l.item,
+      `<div class="mk-card-foot"><span class="muted">${esc(l.sellerName || 'Полубог')}</span><span class="mk-price">${l.price} 🪙</span>
+        <button class="mini" ${hasRes('gold', l.price) ? '' : 'disabled'} onclick="buyLot('${l.id}')">купить</button></div>`)).join('')}</div>`
+      : '<p class="muted">В этой категории пока никто ничего не продаёт.</p>';
+    bodyHtml = gearTabs() + cards;
+  } else if (marketTab === 'sellItems') {
+    const myItemLots = mine.filter((l) => l.kind === 'item' && _mkGearCat(l.item.slot) === marketGearTab);
+    const myHtml = myItemLots.length ? `<h4 class="mk-h4">📦 Мои выставленные</h4><div class="mk-grid">${myItemLots.map((l) => _mkItemCard(l.item,
+      `<div class="mk-card-foot"><span class="mk-price">${l.price} 🪙</span><button class="mini" onclick="cancelLot('${l.id}')">снять</button></div>`)).join('')}</div>` : '';
+    const inv = player.inventory.filter((it) => it.slot && _mkGearCat(it.slot) === marketGearTab);
+    const invHtml = inv.length ? `<div class="mk-grid">${inv.map((it) => _mkItemCard(it,
+      `<div class="mk-card-foot"><input id="mk-iprice-${it.id}" class="mk-input" type="number" min="1" placeholder="цена 🪙"><button class="mini" onclick="listItemLot(${it.id})">выставить</button></div>`)).join('')}</div>`
+      : '<p class="muted">В рюкзаке нет вещей этой категории.</p>';
+    bodyHtml = gearTabs() + myHtml + '<h4 class="mk-h4">🎒 Из рюкзака</h4>' + invHtml;
+  } else if (marketTab === 'buyRes') {
+    const lots = others.filter((l) => l.kind === 'res');
+    bodyHtml = lots.length ? `<div class="mk-list">${lots.map((l) => `<div class="mk-lot">
+      <span>${_lotLabel(l)} <span class="muted">— ${esc(l.sellerName || 'Полубог')}</span></span>
+      <span class="mk-price">${l.price} 🪙</span>
+      <button class="mini" ${hasRes('gold', l.price) ? '' : 'disabled'} onclick="buyLot('${l.id}')">купить</button>
+    </div>`).join('')}</div>` : '<p class="muted">Ресурсов на продажу пока нет.</p>';
+  } else { // sellRes
+    const myResLots = mine.filter((l) => l.kind === 'res');
+    const myHtml = myResLots.length ? `<h4 class="mk-h4">📦 Мои выставленные</h4><div class="mk-list">${myResLots.map((l) => `<div class="mk-lot">
+      <span>${_lotLabel(l)}</span><span class="mk-price">${l.price} 🪙</span>
+      <button class="mini" onclick="cancelLot('${l.id}')">снять</button></div>`).join('')}</div>` : '';
+    const sellRes = Object.keys(RESOURCES).filter((k) => !RESOURCES[k].special && (player.resources[k] || 0) > 0)
+      .map((k) => `<div class="mk-sell-row">
+        <span>${RESOURCES[k].icon} ${RESOURCES[k].name} <span class="muted">(есть ${player.resources[k]})</span></span>
+        <input id="mk-qty-${k}" class="mk-input" type="number" min="1" max="${player.resources[k]}" placeholder="кол-во">
+        <input id="mk-price-${k}" class="mk-input" type="number" min="1" placeholder="цена 🪙">
+        <button class="mini" onclick="listResourceLot('${k}')">выставить</button>
+      </div>`).join('') || '<p class="muted">Нет ресурсов для продажи.</p>';
+    bodyHtml = myHtml + '<h4 class="mk-h4">🪙 Выставить ресурсы</h4><div class="mk-sell">' + sellRes + '</div>';
+  }
 
   return `<div class="panel">
     <h2>🏷️ Барахолка</h2>
-    <p class="muted">Продавайте трофеи и ресурсы другим полубогам. Комиссия с продажи — 1%. Выручка приходит при следующей синхронизации.</p>
+    <p class="muted">Торговля между полубогами. Комиссия с продажи — 1%. Выручка приходит при следующей синхронизации.</p>
     ${!marketLoaded ? '<p class="muted">Загрузка лотов…</p>' : ''}
-
-    <h3>🛒 Купить (${others.length})</h3>
-    <div class="mk-list">${buyHtml}</div>
-
-    <h3>📦 Мои лоты (${mine.length})</h3>
-    <div class="mk-list">${myHtml}</div>
-
-    <h3>🪙 Выставить ресурсы</h3>
-    <div class="mk-sell">${sellRes}</div>
-
-    <h3>⚔️ Выставить снаряжение</h3>
-    <div class="mk-sell">${sellItems}</div>
+    <div class="mk-tabs">${tabBtns}</div>
+    ${bodyHtml}
   </div>`;
 }
 
