@@ -155,8 +155,8 @@ function checkAchievements() {
 // gather — ручная добыча, craft — производство вещей. Окно сбрасывается раз в час.
 function limitCap(kind) {
   const lvl = player.xpLevel || 1;
-  if (kind === 'gather') return 20 + lvl * 3;
-  if (kind === 'craft') return 10 + lvl * 2;
+  if (kind === 'gather') return (20 + lvl * 3) * 100;
+  if (kind === 'craft') return (10 + lvl * 2) * 100;
   return 9999;
 }
 function limitState(kind) {
