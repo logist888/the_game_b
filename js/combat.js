@@ -348,8 +348,10 @@ function rollLoot() {
       clog(`📜 Найдена схема «${rec ? rec.name : id}»!`);
     }
   }
+  // [ВРЕМЕННО/ТЕСТ] если в бою есть Единорог — обычные дропы отключены, падает только мифик (ниже)
+  const unicorns = combat.mobs.filter((m) => String(m.name).replace(' ⭐', '') === 'Единорог').length;
   // изредка — готовая вещь-трофей (снаряжение со слотом)
-  if (chance(10 + player.derived.lootBonus / 10)) {
+  if (!unicorns && chance(10 + player.derived.lootBonus / 10)) {
     const wearable = RECIPES.filter((x) => x.out.item && x.out.item.slot && (x.sparks || 0) < 300);
     const rec = wearable[rnd(0, wearable.length - 1)];
     if (rec) {
@@ -362,7 +364,7 @@ function rollLoot() {
   }
   // части классовых сетов: падают по достижении minTier мира,
   // рарность тем выше, чем выше уровень героя и сложность похода (200% — самые редкие)
-  if (chance(15 + player.derived.lootBonus / 10)) {
+  if (!unicorns && chance(15 + player.derived.lootBonus / 10)) {
     const eligible = Object.keys(GEAR_SETS).filter((id) => tier >= (GEAR_SETS[id].minTier || 1));
     if (eligible.length) {
       const setId = eligible[rnd(0, eligible.length - 1)];
@@ -377,7 +379,6 @@ function rollLoot() {
     }
   }
   // [ВРЕМЕННО/ТЕСТ] Единорог (мир 12) — 100% дроп мифической вещи сета за каждого убитого.
-  const unicorns = combat.mobs.filter((m) => String(m.name).replace(' ⭐', '') === 'Единорог').length;
   for (let u = 0; u < unicorns; u++) {
     const ids = Object.keys(GEAR_SETS);
     const setId = ids[rnd(0, ids.length - 1)];
