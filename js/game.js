@@ -46,6 +46,95 @@ function checkQuests() {
   saveGame();
 }
 
+// --- Ежедневное: вход (стрик) + ежедневные задания ---
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dayDiff(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+function dailyMetric(key) {
+  const p = player;
+  switch (key) {
+    case 'kills': return p.counters.kills;
+    case 'expeditions': return p.counters.expeditions || 0;
+    case 'bossKills': return p.counters.bossKills || 0;
+    case 'pvpWins': return p.pvp ? p.pvp.wins : 0;
+    case 'gathered': return p.counters.gathered;
+    case 'crafted': return p.counters.crafted;
+    default: return 0;
+  }
+}
+function dailyBaselineSnapshot() {
+  const b = {};
+  DAILY_QUESTS.forEach((q) => { b[q.metric] = dailyMetric(q.metric); });
+  return b;
+}
+// гарантируем актуальный дневной цикл (вызывается из recalc)
+function ensureDaily() {
+  const today = todayKey();
+  if (!player.daily) {
+    player.daily = { cycleDay: today, baseline: dailyBaselineSnapshot(), questClaimed: {}, allClaimed: false, loginClaimedDay: null, streak: 0 };
+    return;
+  }
+  if (player.daily.cycleDay !== today) {
+    player.daily.cycleDay = today;
+    player.daily.baseline = dailyBaselineSnapshot();
+    player.daily.questClaimed = {};
+    player.daily.allClaimed = false;
+  }
+}
+function dailyQuestProgress(q) {
+  const base = (player.daily.baseline && player.daily.baseline[q.metric]) || 0;
+  return Math.max(0, Math.min(q.goal, dailyMetric(q.metric) - base));
+}
+function rewardLabel(r) {
+  const parts = [];
+  ['gold', 'sparks', 'souls'].forEach((k) => { if (r[k]) parts.push(`${r[k]} ${RESOURCES[k].icon}`); });
+  if (r.res) Object.entries(r.res).forEach(([k, v]) => parts.push(`${v} ${RESOURCES[k].icon}`));
+  Object.entries(r).forEach(([k, v]) => { if (!['gold', 'sparks', 'souls', 'res'].includes(k) && RESOURCES[k]) parts.push(`${v} ${RESOURCES[k].icon}`); });
+  return parts.join(' ');
+}
+function grantReward(r) {
+  ['gold', 'sparks', 'souls'].forEach((k) => { if (r[k]) addRes(k, r[k]); });
+  if (r.res) Object.entries(r.res).forEach(([k, v]) => addRes(k, v));
+  Object.entries(r).forEach(([k, v]) => { if (!['gold', 'sparks', 'souls', 'res'].includes(k) && RESOURCES[k]) addRes(k, v); });
+}
+function dailyLoginReward(streak) {
+  return { gold: 500, sparks: 50, res: { ore: 5, herb: 5, log: 5 }, souls: (streak % 7 === 0) ? 1 : 0 };
+}
+function claimDailyLogin() {
+  ensureDaily();
+  const today = todayKey();
+  if (player.daily.loginClaimedDay === today) { pushLog('Сегодня награда за вход уже получена.'); render(); return; }
+  const prev = player.daily.loginClaimedDay;
+  player.daily.streak = (prev && dayDiff(prev, today) === 1) ? (player.daily.streak + 1) : 1;
+  player.daily.loginClaimedDay = today;
+  const r = dailyLoginReward(player.daily.streak);
+  grantReward(r);
+  pushLog(`🎁 Награда за вход (день ${player.daily.streak} подряд): +${rewardLabel(r)}.`);
+  if (typeof showToast === 'function') showToast(`🎁 +${r.gold} золота!`);
+  checkAchievements();
+  saveGame();
+  render();
+}
+function claimDailyQuest(qid) {
+  ensureDaily();
+  const q = DAILY_QUESTS.find((x) => x.id === qid);
+  if (!q || player.daily.questClaimed[qid]) return;
+  if (dailyQuestProgress(q) < q.goal) { pushLog('❌ Задание ещё не выполнено.'); render(); return; }
+  player.daily.questClaimed[qid] = true;
+  grantReward(q.reward);
+  pushLog(`🎁 Ежедневное «${q.name}» выполнено! +${rewardLabel(q.reward)}.`);
+  if (!player.daily.allClaimed && DAILY_QUESTS.every((x) => player.daily.questClaimed[x.id])) {
+    player.daily.allClaimed = true;
+    grantReward(DAILY_ALL_REWARD);
+    pushLog(`🌟 Все ежедневные выполнены! Бонус: +${rewardLabel(DAILY_ALL_REWARD)}.`);
+    if (typeof showToast === 'function') showToast('🌟 Ежедневные выполнены!');
+  }
+  saveGame();
+  render();
+}
+
 // Достижения: разблокируем выполненные, выдаём награду один раз.
 function checkAchievements() {
   if (!player.achievements) player.achievements = [];

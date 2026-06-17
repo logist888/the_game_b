@@ -67,7 +67,7 @@ function render() {
     ${resStrip()}`;
 
   const views = {
-    tower: viewTower, stats: viewStats, stairs: viewStairs, lower: viewLower, arena: viewArena,
+    tower: viewTower, stats: viewStats, stairs: viewStairs, daily: viewDaily, lower: viewLower, arena: viewArena,
     workshops: viewWorkshops, lab: viewLab, shop: viewShop, academy: viewAcademy,
     market: viewMarket, tavern: viewTavern, bank: viewBank, clans: viewClans, council: viewCouncil,
     codex: viewCodex,
@@ -1090,6 +1090,52 @@ function viewBank() {
     <p class="hint">Души выдаются за ключевые квесты. В полной версии — пополняются за реальные деньги с возможностью вывода (см. бизнес-план GDD).</p>
   </div>`;
 }
+function viewDaily() {
+  ensureDaily();
+  const today = todayKey();
+  const d = player.daily;
+  const loginDone = d.loginClaimedDay === today;
+  const streak = loginDone ? d.streak : (d.loginClaimedDay && dayDiff(d.loginClaimedDay, today) === 1 ? d.streak + 1 : 1);
+  const lr = dailyLoginReward(streak);
+  const loginCard = `<div class="daily-login ${loginDone ? 'done' : ''}">
+    <div class="dl-head">🎁 <b>Награда за вход</b> <span class="muted">день ${streak} подряд${streak % 7 === 0 ? ' — бонусная Душа!' : ''}</span></div>
+    <div class="dl-reward">${rewardLabel(lr)}</div>
+    ${loginDone
+      ? '<span class="muted">✅ Сегодня получено. Загляни завтра!</span>'
+      : `<button class="big" onclick="claimDailyLogin()">Забрать награду</button>`}
+  </div>`;
+
+  const done = DAILY_QUESTS.filter((q) => d.questClaimed[q.id]).length;
+  const quests = DAILY_QUESTS.map((q) => {
+    const prog = dailyQuestProgress(q);
+    const claimed = !!d.questClaimed[q.id];
+    const ready = prog >= q.goal && !claimed;
+    const pct = Math.min(100, (prog / q.goal) * 100);
+    return `<div class="daily-q ${claimed ? 'done' : ''}">
+      <div class="dq-head">${q.icon} <b>${esc(q.name)}</b> <span class="muted">${esc(q.desc)}</span></div>
+      <div class="bar tiny"><div class="fill" style="width:${pct}%"></div><span>${prog} / ${q.goal}</span></div>
+      <div class="dq-foot"><span class="dq-reward">Награда: ${rewardLabel(q.reward)}</span>
+        ${claimed ? '<span class="muted">✅ получено</span>'
+          : ready ? `<button class="mini" onclick="claimDailyQuest('${q.id}')">забрать</button>`
+          : '<span class="muted">в процессе</span>'}</div>
+    </div>`;
+  }).join('');
+
+  const allCard = `<div class="daily-all ${d.allClaimed ? 'done' : ''}">
+    🌟 <b>Все задания дня</b> <span class="muted">(${done}/${DAILY_QUESTS.length})</span> — бонус: ${rewardLabel(DAILY_ALL_REWARD)}
+    ${d.allClaimed ? ' <span class="muted">✅ получен</span>' : ''}
+  </div>`;
+
+  return `<div class="panel">
+    <h2>🎁 Дары дня</h2>
+    <p class="muted">Заходи каждый день за наградой (стрик повышает её на 7-й день) и выполняй ежедневные задания. Сброс — каждый день.</p>
+    ${loginCard}
+    <h3>Ежедневные задания</h3>
+    ${allCard}
+    ${quests}
+  </div>`;
+}
+
 function viewCouncil() {
   const rows = QUESTS.map((q) => {
     const st = player.quests[q.id];
