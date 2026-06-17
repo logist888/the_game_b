@@ -409,3 +409,6 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .mk-card-stats{font-size:.76rem; color:var(--txt)}
 .mk-card-foot{display:flex; align-items:center; gap:.4em; flex-wrap:wrap; margin-top:.2em}
 .mk-card-foot .mk-input{width:5.5em}
+
+/* табы покоев героя (3 колонки) */
+.mk-tabs-3{grid-template-columns:repeat(3,1fr)}

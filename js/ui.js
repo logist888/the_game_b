@@ -9,6 +9,8 @@ let marketLoaded = false;
 let marketBusy = false;
 let marketTab = 'buyItems';   // buyItems | sellItems | buyRes | sellRes
 let marketGearTab = 'weapon'; // weapon | armor | jewelry
+let statsTab = 'equip';       // Покои героя: equip | bag | stats
+let bagTab = 'weapon';        // подтаб рюкзака: weapon | armor | jewelry | consum
 let clansList = [];
 let clansLoaded = false;
 let clanBusy = false;
@@ -174,25 +176,36 @@ function viewStats() {
     </div>`;
   }).join('')}</div>`;
 
-  const inv = player.inventory.length ? player.inventory.map(itemCard).join('') : '<p class="muted">Рюкзак пуст.</p>';
+  const TABS = [['equip', '🛡 Экипировка'], ['bag', `🎒 Рюкзак (${player.inventory.length})`], ['stats', '💪 Статы']];
+  const tabBtns = TABS.map(([id, label]) => `<button class="mk-tab ${statsTab === id ? 'on' : ''}" onclick="statsTab='${id}';render()">${label}</button>`).join('');
 
-  return `<div class="panel">
-    <h2>🧝 Покои героя</h2>
-    <div class="cols">
-      <div class="col">
-        <h3>Статы</h3>${statRows}
-      </div>
+  let bodyHtml = '';
+  if (statsTab === 'equip') {
+    bodyHtml = `<h3>Экипировка</h3>${equipHtml}
+      <h3>Сет-бонусы</h3>${setsSummaryHtml()}
+      <h3>Сборки экипировки</h3>${loadoutsHtml()}`;
+  } else if (statsTab === 'bag') {
+    const BTABS = [['weapon', '⚔️ Оружие'], ['armor', '🛡 Доспехи'], ['jewelry', '💍 Бижутерия'], ['consum', '🧪 Расходники']];
+    const bagTabs = `<div class="mk-subtabs">${BTABS.map(([id, label]) => `<button class="mk-subtab ${bagTab === id ? 'on' : ''}" onclick="bagTab='${id}';render()">${label}</button>`).join('')}</div>`;
+    const cat = (it) => (it.slot ? _mkGearCat(it.slot) : 'consum');
+    const items = player.inventory.filter((it) => cat(it) === bagTab);
+    const grid = items.length ? `<div class="inv-grid">${items.map(itemCard).join('')}</div>` : '<p class="muted">В этой категории пусто.</p>';
+    bodyHtml = bagTabs + grid;
+  } else { // stats
+    bodyHtml = `<div class="cols">
+      <div class="col"><h3>Статы</h3>${statRows}</div>
       <div class="col">
         <h3>Боевые параметры</h3><div class="kvgrid">${derivedRows}</div>
         <h3>Магия</h3>${viewMagicMini()}
         <h3>Профессии</h3>${viewProfessions()}
-        <h3>Экипировка</h3>${equipHtml}
-        <h3>Сет-бонусы</h3>${setsSummaryHtml()}
-        <h3>Сборки экипировки</h3>${loadoutsHtml()}
       </div>
-    </div>
-    <h3>Рюкзак (${player.inventory.length})</h3>
-    <div class="inv-grid">${inv}</div>
+    </div>`;
+  }
+
+  return `<div class="panel">
+    <h2>🧝 Покои героя</h2>
+    <div class="mk-tabs mk-tabs-3">${tabBtns}</div>
+    ${bodyHtml}
   </div>`;
 }
 
