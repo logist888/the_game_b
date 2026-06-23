@@ -1,0 +1,1036 @@
+// ============================================================================
+// Локализация (RU/EN). t(s) переводит русскую строку на английский, если выбран
+// EN и перевод есть в словаре; иначе возвращает оригинал (русский).
+// Перевод поэтапный: строки добавляются в I18N.en по мере охвата.
+// ============================================================================
+let LANG = (function () { try { return localStorage.getItem('babylon_lang'); } catch (e) { return null; } })();
+
+const I18N = {
+  en: {
+    // --- HUD / общий каркас ---
+    'Уровень': 'Level',
+    'опасность': 'danger',
+    'Опыт': 'XP',
+    'Башня': 'Tower',
+    'Блокнот': 'Notepad',
+    '⚔️ Поле боя': '⚔️ Battlefield',
+    'Золото — игровые деньги': 'Gold — in-game money',
+    'Души — премиум-валюта': 'Souls — premium currency',
+    'Искры — для крафта 3 уровня': 'Sparks — for tier-3 crafting',
+
+    // --- Названия зданий башни ---
+    'Покои героя': "Hero's Chambers",
+    'Лестница в Небо': 'Stairway to Heaven',
+    'Нижний мир': 'Lower World',
+    'Арена': 'Arena',
+    'Мастерские': 'Workshops',
+    'Лаборатории': 'Laboratory',
+    'Магазин': 'Shop',
+    'Академия': 'Academy',
+    'Барахолка': 'Marketplace',
+    'Таверна': 'Tavern',
+    'Банк': 'Bank',
+    'Кланы': 'Clans',
+    'Чат мира': 'World Chat',
+    'Гильдия магов': 'Mage Guild',
+    'Совет старейшин': 'Council of Elders',
+
+    // --- Описания зданий ---
+    'Экипировка, рюкзак, статы, дары дня и коллекция сетов.': 'Equipment, backpack, stats, daily gifts and set collection.',
+    'Спуститься в миры и выбрать локацию для похода.': 'Descend into the worlds and choose a location for an expedition.',
+    'Города и шахты смертных: пассивная добыча ресурсов во времени (раздел GDD «нижний мир»).': "Mortals' cities and mines: passive resource gathering over time.",
+    'Тренировочные бои с двойником ради опыта.': 'Training duels with your shadow double for experience.',
+    'Переработка ресурсов и создание оружия, брони, бижутерии.': 'Refine resources and craft weapons, armor and jewelry.',
+    'Эликсиры, зелья и мази.': 'Elixirs, potions and balms.',
+    'Купить ресурсы и расходники за золото, продать трофеи.': 'Buy resources and consumables for gold, sell loot.',
+    'База знаний об открытых мирах и статистика.': 'Knowledge base of discovered worlds and statistics.',
+    'Торговля между игроками: выставляй лоты и покупай у других (раздел GDD «Барахолка»).': 'Player trading: list lots and buy from others.',
+    'Азартные игры на золото: кости, напёрстки и лотерея (раздел GDD «Таверна»).': 'Games of chance for gold: dice, thimbles and lottery.',
+    'Обмен Душ на Золото и Искры (монетизация GDD).': 'Exchange Souls for Gold and Sparks.',
+    'Объедините полубогов в клан: общая казна и пассивный бонус всем участникам (раздел GDD «кланы»).': 'Unite demigods into a clan: shared treasury and a passive bonus for all members.',
+    'Общий живой чат всех полубогов.': 'A shared live chat for all demigods.',
+    'Членство, ранги, улучшение и изучение заклинаний (раздел GDD «Гильдия магов»).': 'Membership, ranks, upgrading and learning spells.',
+    'Журнал заданий — большая часть квестов берётся здесь.': 'Quest log — most quests are taken here.',
+
+    // --- Вавилонская башня (хаб) ---
+    '🏯 Вавилонская башня': '🏯 Tower of Babylon',
+    'Цитадель порядка в хаосе. Полубоги обитают здесь, между нижним миром смертных и нестабильным верхним миром. Выберите помещение.': 'A citadel of order amid chaos. Demigods dwell here, between the mortal Lower World and the unstable Upper World. Choose a room.',
+
+    // --- Статы ---
+    'Сила': 'Strength', 'Ловкость': 'Agility', 'Выносливость': 'Endurance', 'Интеллект': 'Intellect',
+    'Вера': 'Faith', 'Ярость': 'Fury', 'Удача': 'Luck', 'Реакция': 'Reaction', 'Отражение': 'Reflection',
+
+    // --- Ресурсы ---
+    'Волокно': 'Fiber', 'Тонкая шкура': 'Thin Hide', 'Толстая шкура': 'Thick Hide', 'Бревно': 'Log',
+    'Камень': 'Stone', 'Руда': 'Ore', 'Кость': 'Bone', 'Ромашка полевая': 'Field Chamomile',
+    'Мухомор': 'Fly Agaric', 'Пустынный песок': 'Desert Sand', 'Слюда': 'Mica', 'Соль': 'Salt',
+    'Драгоценный камень': 'Gem', 'Древесный уголь': 'Charcoal', 'Доска': 'Plank', 'Кусок ткани': 'Cloth',
+    'Кусок кожи': 'Leather', 'Металл': 'Metal', 'Чешуя дракона': 'Dragon Scale', 'Камень душ': 'Soul Gem',
+    'Звёздный кристалл': 'Star Crystal', 'Адская сталь': 'Hell Steel', 'Магическая эссенция': 'Arcane Essence',
+    'Золото': 'Gold', 'Души': 'Souls', 'Искры': 'Sparks',
+
+    // --- Рарность ---
+    'Обычный': 'Common', 'Необычный': 'Uncommon', 'Редкий': 'Rare', 'Эпический': 'Epic',
+    'Легендарный': 'Legendary', 'Мифический': 'Mythic',
+
+    // --- Стихии и направления ---
+    'ветер': 'air', 'вода': 'water', 'огонь': 'fire', 'земля': 'earth',
+    'свет': 'light', 'тьма': 'dark', 'сумрак': 'twilight',
+
+    // --- Слова предметов/действий ---
+    'урон': 'dmg', 'урона': 'dmg', 'броня': 'armor', 'усиление': 'buff', 'снимает яд': 'cures poison',
+    'немота': 'silence', 'р.': 'r.', 'каменная кожа': 'stone skin', 'конц.': 'conc.', 'треб:': 'req:',
+    'надеть': 'equip', 'снять': 'remove', 'вернуть': 'return', 'вернуть в арсенал': 'return to armory',
+    'в бою': 'in combat', 'одолжить клану': 'lend to clan', 'Арендовано': 'Rented', 'аренда': 'rented',
+    'пусто': 'empty',
+
+    // --- Типы предметов ---
+    'оружие': 'weapon', 'броня': 'armor', 'эликсир': 'elixir', 'зелье': 'potion', 'мазь': 'balm', 'усилитель': 'enhancer',
+
+    // --- Миры ---
+    'Равнинный': 'Plains', 'Лесной': 'Forest', 'Подземный': 'Underground', 'Горный': 'Mountains',
+    'Пустынный': 'Desert', 'Болотный': 'Swamp', 'Водный': 'Aquatic', 'Царство мёртвых': 'Realm of the Dead',
+    'Лавяной': 'Lava', 'Горный пик / Небесный': 'Mountain Peak / Celestial', 'Ад': 'Hell', 'Рай': 'Paradise',
+
+    // --- Предметы (крафт/магазин) ---
+    'Кинжал': 'Dagger', 'Меч': 'Sword', 'Топор': 'Axe', 'Булава': 'Mace', 'Копьё': 'Spear',
+    'Лук': 'Bow', 'Посох': 'Staff', 'Метательный диск': 'Throwing Disc',
+    'Тканевый шлем': 'Cloth Helmet', 'Роба': 'Robe', 'Кожаный шлем': 'Leather Helmet',
+    'Кожаный доспех': 'Leather Armor', 'Стальной шлем': 'Steel Helmet', 'Латный нагрудник': 'Plate Cuirass',
+    'Большой щит': 'Great Shield', 'Кольцо силы': 'Ring of Power', 'Амулет веры': 'Amulet of Faith',
+    'Серьги удачи': 'Earrings of Luck', 'Рунный клинок': 'Rune Blade', 'Посох некроманта': 'Necromancer Staff',
+    'Звёздный лук': 'Star Bow', 'Адский молот': 'Hell Maul', 'Доспех дракона': 'Dragon Armor',
+    'Мантия мага': 'Mage Robe', 'Шлем теней': 'Shadow Helm', 'Амулет звёзд': 'Amulet of Stars',
+    'Кольцо дракона': 'Dragon Ring', 'Серьги ада': 'Hell Earrings',
+    'Эликсир жизни': 'Life Elixir', 'Эликсир маны': 'Mana Elixir', 'Зелье яда': 'Poison Vial',
+    'Мазь силы': 'Strength Balm', 'Противоядие': 'Antidote', 'Зелье немоты': 'Silence Potion',
+    'Зелье каменной кожи': 'Stone Skin Potion',
+
+    'Ржавый кинжал': 'Rusty Dagger',
+    // рейд-боссы (составные имена)
+    'Гидра бездны': 'Abyss Hydra', 'Тёмный титан': 'Dark Titan', 'Пожиратель миров': 'World Devourer', 'Древний дракон': 'Ancient Dragon',
+
+    // --- Усилители (самоцветы) ---
+    'Рубин': 'Ruby', 'Изумруд': 'Emerald', 'Оникс': 'Onyx', 'Сапфир': 'Sapphire', 'Аметист': 'Amethyst',
+    'Альмандин': 'Almandine', 'Цитрин': 'Citrine', 'Топаз': 'Topaz', 'Алмаз': 'Diamond',
+
+    // --- Сеты и их части ---
+    'Звёздный аркан': 'Star Arcanum', 'Посох звёздного аркана': 'Star Arcanum Staff', 'Венец звездочёта': "Stargazer's Crown",
+    'Мантия созвездий': 'Mantle of Constellations', 'Амулет небосвода': 'Amulet of the Firmament', 'Перстень звездочёта': "Stargazer's Signet",
+    'Гнев Вавилона': 'Wrath of Babylon', 'Клинок Вавилона': 'Blade of Babylon', 'Шлем владыки': "Overlord's Helm",
+    'Латы владыки': "Overlord's Plate", 'Щит Вавилона': 'Shield of Babylon', 'Печать воина': "Warrior's Seal",
+    'Кровавая жатва': 'Bloody Harvest', 'Секира кровавой жатвы': 'Bloody Harvest Axe', 'Шлем ярости': 'Helm of Fury',
+    'Доспех берсерка': 'Berserker Armor', 'Серьга бешенства': 'Earring of Frenzy', 'Кольцо неистовства': 'Ring of Rage',
+    'Шёпот ветра': 'Whisper of Wind', 'Лук шёпота ветра': 'Wind Whisper Bow', 'Капюшон следопыта': "Ranger's Hood",
+    'Куртка следопыта': "Ranger's Jacket", 'Серьга ветра': 'Earring of Wind', 'Кольцо меткости': 'Ring of Accuracy',
+    'Несокрушимый бастион': 'Unbreakable Bastion', 'Молот стража': "Guardian's Hammer", 'Шлем бастиона': 'Bastion Helm',
+    'Латы бастиона': 'Bastion Plate', 'Башенный щит': 'Tower Shield', 'Амулет твердыни': 'Amulet of the Stronghold',
+    'Тень Зиккурата': 'Shadow of the Ziggurat', 'Клинок теней': 'Blade of Shadows', 'Маска зиккурата': 'Ziggurat Mask',
+    'Облачение теней': 'Shadow Garb', 'Кольцо убийцы': "Assassin's Ring", 'Серьга тени': 'Earring of Shadow',
+    'Длань Небес': 'Hand of Heaven', 'Булава небес': "Heaven's Mace", 'Венец паладина': "Paladin's Crown",
+    'Латы небес': "Heaven's Plate", 'Эгида небес': 'Aegis of Heaven', 'Реликвия небес': 'Relic of Heaven',
+
+    // --- Интерфейс: заголовки, вкладки, кнопки, подписи ---
+    'Боевые параметры': 'Combat stats', '⚔️ Боевые навыки': '⚔️ Combat skills', 'Магия': 'Magic',
+    'Профессии': 'Professions', 'Статы': 'Stats', 'Ресурсы': 'Resources', 'Экипировка': 'Equipment',
+    'Сет-бонусы': 'Set bonuses', 'Сборки экипировки': 'Loadouts', 'Ковка частей': 'Forge pieces',
+    'Перековка рарности': 'Reforge rarity', '🐾 Питомцы': '🐾 Pets', 'В строю:': 'In party:',
+    'Атака': 'Attack', 'Блок': 'Block', 'Защита': 'Defense', 'Урон': 'Damage', 'Броня': 'Armor',
+    'Маг. контр': 'Mag. counter', 'Физ. контр': 'Phys. counter', 'Маг. крит': 'Mag. crit', 'Физ. крит': 'Phys. crit',
+    'Парирование': 'Parry', 'Реген HP/мин': 'HP regen/min', 'Реген MP/мин': 'MP regen/min',
+    'Герой': 'Hero', 'Игрок': 'Player', 'Мир': 'World', 'Локация': 'Location', 'Сложность локации': 'Location difficulty',
+    'Исследование мира': 'World exploration', 'Ранг': 'Rank', 'Сумма уровней стихий:': 'Sum of element levels:',
+    'Членский взнос — единоразово.': 'Membership fee — one-time.', 'Все доступные заклинания изучены.': 'All available spells learned.',
+    'Ур.': 'Lv.', '◇ вставить…': '◇ insert…', '— пока пусто —': '— empty —', '(выбери слот)': '(choose slot)',
+    '(склады полны!)': '(storage full!)', '+10 макс': '+10 max', 'Terra Incognita — мир ещё не исследован': 'Terra Incognita — not yet explored',
+    // кнопки
+    'создать': 'craft', 'купить': 'buy', 'продать': 'sell', 'выставить': 'list', 'отправить': 'send',
+    'обновить': 'update', 'отпустить': 'release', 'перековать': 'reforge', 'забрать': 'claim',
+    'Применить': 'Apply', 'внести в казну': 'deposit', 'в процессе': 'in progress', 'нет расходников': 'no consumables',
+    'вы арендуете': 'you rent', 'закрыт': 'closed', 'открыт': 'open', 'макс': 'max',
+    'Забрать награду': 'Claim reward', 'Вернуться в башню': 'Return to tower', '✨ Каст': '✨ Cast',
+    '⚔️ В поход': '⚔️ Go on expedition', 'Применить промокод': 'Apply promo code',
+    // экраны (заголовки с эмодзи)
+    '⚔️ Арена': '⚔️ Arena', '⚗️ Лаборатории': '⚗️ Laboratory', '🍺 Таверна': '🍺 Tavern', '🏛️ Банк': '🏛️ Bank',
+    '🏪 Магазин': '🏪 Shop', '🏷️ Барахолка': '🏷️ Marketplace', '🏘️ Нижний мир': '🏘️ Lower World',
+    '🏆 Зал славы': '🏆 Hall of Fame', '🐉 Клановый рейд': '🐉 Clan Raid', '🏪 Клановый арсенал': '🏪 Clan Armory',
+    '⚙️ Улучшения клана': '⚙️ Clan upgrades', '⚔️ Соперники': '⚔️ Opponents', '⚔️ Атаковать': '⚔️ Attack',
+    '🎁 Дары дня': '🎁 Daily gifts', 'Ежедневные задания': 'Daily quests', 'Все задания дня': 'All daily quests',
+    'Награда за вход': 'Login reward', '🎲 Кости': '🎲 Dice', '🎟️ Лотерея': '🎟️ Lottery', '🎒 Из рюкзака': '🎒 From backpack',
+    // арена/бой
+    'Соперники не найдены': 'No opponents found', '🏆 Побед:': '🏆 Wins:', '🎯 Боёв с наградой сегодня:': '🎯 Rewarded fights today:',
+    'Выйти на бой с двойником': 'Fight your double', 'Бой с тёмным двойником ради опыта.': 'Fight your dark double for experience.',
+    'Вы вернётесь в башню ослабленным.': 'You return to the tower weakened.', '👑 БОСС': '👑 BOSS',
+    // кланы
+    'Лидер:': 'Leader:', 'Лучшие бойцы:': 'Top fighters:', 'Твой вклад:': 'Your contribution:', 'Зачистка мира:': 'World clearing:',
+    'Рейд пока недоступен.': 'Raid not available yet.', 'Живой чат клана. Обновляется автоматически.': 'Live clan chat. Updates automatically.',
+    'Общий живой чат всех полубогов. Обновляется автоматически.': 'Shared live chat for all demigods. Updates automatically.',
+    'Сообщений пока нет. Будь первым!': 'No messages yet. Be the first!', 'Событий пока нет.': 'No events yet.',
+    'Арсенал пуст. Одолжите вещь кнопкой 📦 в инвентаре.': 'Armory is empty. Lend an item via the 📦 button in your backpack.',
+    '⚜️ Бонус клана:': '⚜️ Clan bonus:', '🐉 Босс повержен!': '🐉 Boss defeated!', '🎁 Награда за рейд:': '🎁 Raid reward:',
+    'Нанесено боссу клана:': 'Damage to clan boss:', 'Основать клан': 'Found a clan',
+    'Пока нет ни одного клана. Основай первый!': 'No clans yet — found the first!', '✓ зачищен': '✓ cleared', '✅ принять': '✅ accept',
+    // магазин/барахолка/нижний мир
+    'Загрузка лотов…': 'Loading lots…', 'В этой категории пока никто ничего не продаёт.': 'Nobody is selling in this category yet.',
+    'В этой категории пусто.': 'Empty in this category.', 'Нет ресурсов для продажи.': 'No resources to sell.',
+    'Ресурсов на продажу пока нет.': 'No resources for sale yet.', 'В рюкзаке нет вещей этой категории.': 'No items of this category in the backpack.',
+    'Нет ресурсов — добудьте в Нижнем мире или в походах.': 'No resources — gather in the Lower World or on expeditions.',
+    '⛏️ Добыть руками (бесплатно)': '⛏️ Gather by hand (free)', 'Собрать урожай': 'Collect harvest',
+    'постройки ещё не возведены — добывай руками ниже': 'no buildings yet — gather by hand below',
+    'Угадай, под каким стаканом шарик. Угадал — выигрыш ×3.': 'Guess which cup hides the ball — win ×3.',
+    // статистика/прочее
+    '· Убито мобов:': '· Mobs killed:', '· Создано вещей:': '· Items crafted:', 'Посещено локаций:': 'Locations visited:',
+    '· Полных комплектов:': '· Full sets:', '· Участников:': '· Members:', '· Выиграно:': '· Won:',
+    'Заработано:': 'Earned:', 'Сыграно:': 'Played:', 'Собрано частей:': 'Pieces collected:',
+    'Загрузка…': 'Loading…', '⏳ Загрузка…': '⏳ Loading…', 'Нет данных': 'No data', 'Ошибка загрузки': 'Loading error',
+    'Ещё никто не попал в зал славы': 'No one has reached the Hall of Fame yet', 'Соперник недоступен': 'Opponent unavailable',
+
+    // --- Заклинания: имена ---
+    'Воздушный щит': 'Air Shield', 'Песчаная буря': 'Sandstorm', 'Яростный ветер': 'Raging Wind',
+    'Малое лечение': 'Minor Heal', 'Яд': 'Poison', 'Луч света': 'Ray of Light', 'Пепел': 'Ash',
+    'Луч негативной энергии': 'Negative Energy Ray', 'Преграда': 'Barrier', 'Яма': 'Pit',
+    'Землетрясение': 'Earthquake', 'Волна исцеления': 'Healing Wave', 'Цепная молния': 'Chain Lightning',
+    'Инферно': 'Inferno', 'Каменная кожа': 'Stone Skin', 'Высасывание души': 'Soul Drain', 'Метеор': 'Meteor',
+    'Ледяное копьё': 'Ice Lance', 'Буря': 'Storm', 'Аура жизни': 'Aura of Life',
+    // --- Заклинания: описания ---
+    'Смерч вокруг цели: +20 защиты на 1 раунд.': 'A whirlwind around the target: +20 defense for 1 round.',
+    'Засыпает врагу глаза: -20 защиты на 1 раунд.': 'Blinds the enemy: -20 defense for 1 round.',
+    'Сдувает все щиты и бури с поля боя.': 'Blows away all shields and storms from the battlefield.',
+    'Лечит 10 HP цели.': 'Heals 10 HP of the target.',
+    'Травит цель: -1 HP/раунд, 3 раунда.': 'Poisons the target: -1 HP/round for 3 rounds.',
+    'Снимает яд и даёт регенерацию.': 'Cures poison and grants regeneration.',
+    'Обжигающий луч: -5 HP.': 'A searing ray: -5 HP.',
+    'Горсть пепла в лицо: -9 HP и -10 защиты на раунд.': 'A handful of ash to the face: -9 HP and -10 defense for a round.',
+    '-5 урон, -10 защиты, -1 сила цели.': '-5 dmg, -10 defense, -1 strength of the target.',
+    'Преграда на поле боя: следующий удар врага слабее.': "A barrier on the field: the enemy's next hit is weaker.",
+    'Враг проваливается в яму и пропускает раунд (шанс).': 'The enemy falls into a pit and skips a round (chance).',
+    'Сотрясает поле боя, нанося урон всем целям.': 'Shakes the battlefield, damaging all targets.',
+    'Мощная волна восстанавливает 40 HP.': 'A powerful wave restores 40 HP.',
+    'Молния бьёт по всем врагам: −15 HP каждому.': 'Lightning strikes all enemies: −15 HP each.',
+    'Адское пламя испепеляет цель: −30 HP.': 'Hellfire incinerates the target: −30 HP.',
+    'Кожа твердеет как камень: +40 защиты на 3 раунда.': 'Skin hardens like stone: +40 defense for 3 rounds.',
+    'Крадёт жизнь врага: −20 HP врагу, +10 HP вам.': "Steals the enemy's life: −20 HP to enemy, +10 HP to you.",
+    'Падающий метеор сокрушает цель: −50 HP.': 'A falling meteor crushes the target: −50 HP.',
+    'Пронзает цель льдом: −28 HP.': 'Pierces the target with ice: −28 HP.',
+    'Шторм бьёт по всем врагам: −22 HP.': 'A storm hits all enemies: −22 HP.',
+    'Восстанавливает 25 HP.': 'Restores 25 HP.',
+
+    // --- Мобы ---
+    'полевая фея': 'Field Fairy', 'Тушканчик': 'Jerboa', 'бык': 'Bull', 'Орк': 'Orc', 'Светлый эльф': 'High Elf',
+    'Химера': 'Chimera', 'Заяц': 'Hare', 'Кикимора': 'Kikimora', 'Кентавр': 'Centaur', 'Олень': 'Deer',
+    'Хоббит': 'Hobbit', 'Ехидна': 'Echidna', 'Ёж': 'Hedgehog', 'Оса': 'Wasp', 'Разбойник': 'Bandit',
+    'Гоблин': 'Goblin', 'Обезумевший лось': 'Maddened Elk', 'Вепрь': 'Boar', 'Тигр': 'Tiger', 'Бабай': 'Boogeyman',
+    'Лесной эльф': 'Wood Elf', 'Энт': 'Ent', 'Дриада': 'Dryad', 'Чупакабра': 'Chupacabra', 'Медведь': 'Bear',
+    'Дендроид': 'Dendroid', 'Леший': 'Leshy', 'Волк': 'Wolf', 'Чернокнижник': 'Warlock', 'Медведь-оборотень': 'Werebear',
+    'Хранитель подземелья': 'Dungeon Keeper', 'Кристальный дракон': 'Crystal Dragon', 'Акромантул': 'Acromantula',
+    'Кобольд': 'Kobold', 'Летучая мышь': 'Bat', 'Песчаный червь': 'Sandworm', 'Гигантский слизень': 'Giant Slug',
+    'Драук': 'Draugr', 'Дроу': 'Drow', 'Крыса': 'Rat', 'Минотавр': 'Minotaur', 'Дух земли': 'Earth Spirit',
+    'Крот': 'Mole', 'Червь': 'Worm', 'Земляной элементаль': 'Earth Elemental', 'Горгона': 'Gorgon', 'Орёл': 'Eagle',
+    'Горгулья': 'Gargoyle', 'Гигантский паук': 'Giant Spider', 'Тролль': 'Troll', 'Гигант': 'Giant',
+    'Ледяной демон': 'Ice Demon', 'Аспид': 'Asp', 'Циклоп': 'Cyclops', 'Каменный голем': 'Stone Golem',
+    'Гнолл': 'Gnoll', 'Гном': 'Dwarf', 'Гарпия': 'Harpy', 'Серый гном': 'Grey Dwarf', 'Гремлин': 'Gremlin',
+    'Скарабей': 'Scarab', 'Мантикора': 'Manticore', 'Джинн': 'Djinn', 'Дервиш': 'Dervish',
+    'Гигантский скорпион': 'Giant Scorpion', 'Ночной убийца': 'Night Assassin', 'Крысолюд': 'Ratman', 'Мумия': 'Mummy',
+    'Кобра': 'Cobra', 'Зловещее нечто': 'Sinister Thing', 'Сфинкс': 'Sphinx', 'Драйдер': 'Drider', 'Стервятник': 'Vulture',
+    'Болотник': 'Bog Beast', 'Банши': 'Banshee', 'Ядовитая жаба': 'Poison Toad', 'Анаконда': 'Anaconda',
+    'Водяной': 'Vodyanoy', 'Василиск': 'Basilisk', 'Ящер': 'Lizardman', 'Виверна': 'Wyvern', 'Крокодил': 'Crocodile',
+    'Гидра': 'Hydra', 'Огр': 'Ogre', 'Тритон': 'Triton', 'Краб': 'Crab', 'Сирена': 'Siren', 'Черепаха': 'Turtle',
+    'Русалка': 'Mermaid', 'Морской ёж': 'Sea Urchin', 'Дух воды': 'Water Spirit', 'Водяной элементаль': 'Water Elemental',
+    'Левиафан': 'Leviathan', 'Кракен': 'Kraken', 'Акула': 'Shark', 'Скелет': 'Skeleton', 'Костяной дракон': 'Bone Dragon',
+    'Смерть': 'Death', 'Оборотень': 'Werewolf', 'Дрампир': 'Dhampir', 'Зомби': 'Zombie', 'Тёмный рыцарь': 'Dark Knight',
+    'Чёрная вдова': 'Black Widow', 'Некромант': 'Necromancer', 'Вампир': 'Vampire', 'Гуль': 'Ghoul', 'Призрак': 'Ghost',
+    'Лич': 'Lich', 'Живой огонёк': 'Living Flame', 'Феникс': 'Phoenix', 'Лавяной голем': 'Lava Golem',
+    'Ржавый дракон': 'Rust Dragon', 'Огненный элементаль': 'Fire Elemental', 'Ифрит': 'Ifrit', 'Чёрный дракон': 'Black Dragon',
+    'Дух огня': 'Fire Spirit', 'Порождение бездны': 'Abyss Spawn', 'Саламандра': 'Salamander', 'Ворон': 'Raven',
+    'Золотой дракон': 'Golden Dragon', 'Громобой': 'Thunderer', 'Воздушный дух': 'Air Spirit', 'Порождение ночи': 'Night Spawn',
+    'Козерог': 'Capricorn', 'Маг': 'Mage', 'Нага': 'Naga', 'Воздушный элементаль': 'Air Elemental', 'Грифон': 'Griffin',
+    'Эхо': 'Echo', 'Титан': 'Titan', 'Осквернитель': 'Defiler', 'Магог': 'Magog', 'Демон': 'Demon', 'Цербер': 'Cerberus',
+    'Червь-трупоед': 'Carrion Worm', 'Кошмар': 'Nightmare', 'Бес': 'Imp', 'Адский таракан': 'Hell Roach', 'Чёрт': 'Devilkin',
+    'Госпожа боли': 'Mistress of Pain', 'Мясник': 'Butcher', 'Мародёр': 'Marauder', 'Антихрист': 'Antichrist',
+    'Суккуба': 'Succubus', 'Инкуб': 'Incubus', 'Проклятье': 'Curse', 'Дьявол': 'Devil', 'Люцифер': 'Lucifer',
+    'Страж света': 'Guardian of Light', 'Змей-искуситель': 'Tempter Serpent', 'Нимфа': 'Nymph', 'Пегас': 'Pegasus',
+    'Лепрекон': 'Leprechaun', 'Сатир': 'Satyr', 'Архангел': 'Archangel', 'Шива': 'Shiva', 'Раздор': 'Discord', 'Единорог': 'Unicorn',
+
+    // --- Локации ---
+    'Поле': 'Field', 'Луг': 'Meadow', 'Ручей': 'Brook', 'Озеро': 'Lake', 'Прерии': 'Prairie', 'Овраг': 'Ravine',
+    'Водопой': 'Watering Hole', 'Одинокий холм': 'Lonely Hill', 'Туман': 'Mist', 'Тропа': 'Trail', 'Опушка': 'Forest Edge',
+    'Поляна': 'Glade', 'Пуща': 'Thicket', 'Древний лес': 'Ancient Forest', 'Бор': 'Pinewood', 'Плодовая роща': 'Orchard',
+    'Малинник': 'Raspberry Patch', 'Заросли': 'Overgrowth', 'Молодой лес': 'Young Forest', 'Сгоревший лес': 'Burnt Forest',
+    'Кристальная пещера': 'Crystal Cave', 'Шахты': 'Mines', 'Галереи': 'Galleries', 'Грот': 'Grotto',
+    'Подземное озеро': 'Underground Lake', 'Древние ходы': 'Ancient Passages', 'Лабиринт': 'Labyrinth', 'Разломы': 'Rifts',
+    'Живая земля': 'Living Earth', 'Лес сталагмитов': 'Stalagmite Forest', 'Скала': 'Cliff', 'Парапет': 'Parapet',
+    'Ущелье': 'Gorge', 'Водопад': 'Waterfall', 'Ледник': 'Glacier', 'Утёс': 'Crag', 'Оползень': 'Landslide',
+    'Перевал': 'Mountain Pass', 'Пик': 'Peak', 'Горная тропа': 'Mountain Trail', 'Дюны': 'Dunes', 'Оазис': 'Oasis',
+    'Долина миражей': 'Valley of Mirages', 'Высохшая река': 'Dried River', 'Развалины дворца': 'Palace Ruins',
+    'Пирамиды': 'Pyramids', 'Кактусовая роща': 'Cactus Grove', 'Зыбучие пески': 'Quicksand', 'Солёное озеро': 'Salt Lake',
+    'Мёртвый оазис': 'Dead Oasis', 'Трясина': 'Quagmire', 'Илистые берега': 'Silty Banks', 'Камышовые заросли': 'Reed Thicket',
+    'Омут': 'Deep Pool', 'Большие кочки': 'Great Hummocks', 'Логово гадов': 'Den of Vipers', 'Сгнивший лес': 'Rotten Forest',
+    'Мутное озеро': 'Murky Lake', 'Торфяник': 'Peat Bog', 'Источник газов': 'Gas Vent', 'Дно': 'Seabed', 'Остров': 'Island',
+    'Коса': 'Sandbar', 'Мелководье': 'Shallows', 'Западина': 'Hollow', 'Течение': 'Current', 'Водоворот': 'Whirlpool',
+    'Лагуна': 'Lagoon', 'Кладбище кораблей': 'Ship Graveyard', 'Рифы': 'Reefs', 'Кладбище': 'Graveyard', 'Стикс': 'Styx',
+    'Мёртвый лес': 'Dead Forest', 'Разрытые могилы': 'Dug-up Graves', 'Осквернённые склепы': 'Desecrated Crypts',
+    'Катакомбы': 'Catacombs', 'Пристанище некромантов': "Necromancers' Refuge", 'Усадьбы вампиров': 'Vampire Manors',
+    'Пристанище душ': 'Refuge of Souls', 'Мавзолей': 'Mausoleum', 'Кратеры': 'Craters', 'Потоки лавы': 'Lava Flows',
+    'Застывшая лава': 'Frozen Lava', 'Серные гейзеры': 'Sulfur Geysers', 'Лавяное озеро': 'Lava Lake', 'Лавяная река': 'Lava River',
+    'Пепельная туча': 'Ash Cloud', 'Действующий вулкан': 'Active Volcano', 'Потухший вулкан': 'Dormant Volcano',
+    'Раскалённая порода': 'Molten Rock', 'Облако': 'Cloud', 'Грозовая туча': 'Storm Cloud', 'Ураган': 'Hurricane',
+    'Ночное небо': 'Night Sky', 'Вакуум': 'Vacuum', 'Воздушные замки': 'Air Castles', 'Летающий остров': 'Floating Island',
+    'Сухой ветер': 'Dry Wind', 'Галерея застывших молний': 'Gallery of Frozen Lightning', 'Эфир': 'Aether',
+    'Смолистые ванны': 'Tar Baths', 'Серные тучи': 'Sulfur Clouds', 'Живодёрня': 'Slaughterhouse',
+    'Пресс возмездия': 'Press of Retribution', 'Столовая «у Люцифера»': "Lucifer's Canteen", 'Спальня грешников': "Sinners' Bedroom",
+    'Мясная лавка': 'Meat Shop', 'Покои дьявола': "Devil's Chambers", 'Арена Ада': 'Arena of Hell', 'Бездонный провал': 'Bottomless Pit',
+    'Лестница в небо': 'Stairway to Heaven', 'Запретный сад': 'Forbidden Garden', 'Тёплые озёра': 'Warm Lakes',
+    'Цветущие поляны': 'Blooming Glades', 'Радужные поля': 'Rainbow Fields', 'Райские кусты': 'Paradise Bushes',
+    'Поднебесный замок': 'Celestial Castle', 'Источники молодости': 'Fountains of Youth', 'Земли обетованные': 'Promised Lands',
+    'Роща смирения': 'Grove of Humility',
+
+    // --- Описания статов ---
+    'ур.': 'lv.', 'растёт от:': 'grows from:',
+    'нанесённый урон': 'damage dealt', 'уклонения': 'dodges', 'полученный урон': 'damage taken',
+    'потраченная мана': 'mana spent', 'магические криты': 'magic crits', 'физические криты': 'physical crits',
+    'удачные удары': 'lucky hits', 'физические контрудары': 'physical counters', 'магические контрудары': 'magic counters',
+    '+2% к урону оружия, +5 к переносимому весу. Нужна для оружия и брони.': '+2% weapon damage, +5 carry weight. Required for weapons and armor.',
+    '+1% к урону дальнего боя, +1 защита, +2 атака.': '+1% ranged damage, +1 defense, +2 attack.',
+    '+5 здоровья, +1% урон ближнего/среднего боя, +1 реген HP/мин.': '+5 health, +1% melee/mid-range damage, +1 HP regen/min.',
+    '+5 маны, +1 реген MP/мин, +2% к силе заклинаний.': '+5 mana, +1 MP regen/min, +2% spell power.',
+    '+2% шанс магического крита, +1 реген MP/мин.': '+2% magic crit chance, +1 MP regen/min.',
+    '+2% шанс физического крита, +1 реген HP/мин.': '+2% physical crit chance, +1 HP regen/min.',
+    '+1% шанс макс. урона, +5% шанс ценного трофея.': '+1% max damage chance, +5% rare loot chance.',
+    '+2% физический контрудар, +2% защита.': '+2% physical counter, +2% defense.',
+    '+2% магический контрудар, +2% сопротивление.': '+2% magic counter, +2% resistance.',
+
+    // --- Профессии ---
+    'Кузнец': 'Smith', 'Столяр': 'Carpenter', 'Кожевник': 'Tanner', 'Ткач': 'Weaver', 'Плавильщик': 'Smelter',
+    'Ювелир': 'Jeweler', 'Алхимик': 'Alchemist', 'Собиратель': 'Gatherer',
+    'ковка оружия, брони и щитов': 'forging weapons, armor and shields', 'обработка дерева, луки и посохи': 'woodworking, bows and staves',
+    'выделка кожи': 'leather tanning', 'ткачество и лёгкая броня': 'weaving and light armor', 'выплавка металла': 'metal smelting',
+    'огранка камней и бижутерия': 'gem cutting and jewelry', 'эликсиры, зелья и мази': 'elixirs, potions and balms',
+    'добыча ресурсов своими руками': 'gathering resources by hand',
+    'Гранд-мастер': 'Grandmaster', 'Мастер': 'Master', 'Подмастерье': 'Journeyman', 'Новичок': 'Novice',
+
+    // --- Достижения ---
+    'Первая кровь': 'First Blood', 'Убей первого моба.': 'Kill your first mob.',
+    'Истребитель': 'Slayer', 'Убей 100 мобов.': 'Kill 100 mobs.',
+    'Палач': 'Executioner', 'Убей 1000 мобов.': 'Kill 1000 mobs.',
+    'Гроза боссов': 'Bane of Bosses', 'Победи первого босса.': 'Defeat your first boss.',
+    'Драконоборец': 'Dragonslayer', 'Победи 10 боссов.': 'Defeat 10 bosses.',
+    'Старатель': 'Prospector', 'Добудь 200 ресурсов своими руками.': 'Gather 200 resources by hand.',
+    'Создай 50 предметов.': 'Craft 50 items.',
+    'Странник': 'Wanderer', 'Соверши 25 походов.': 'Complete 25 expeditions.',
+    'Первопроходец': 'Pioneer', 'Побывай в 30 локациях.': 'Visit 30 locations.',
+    'Дуэлянт': 'Duelist', 'Победи 10 игроков на Арене.': 'Defeat 10 players in the Arena.',
+    'Архимаг': 'Archmage', 'Изучи все 12 заклинаний.': 'Learn all 12 spells.',
+    'Восхождение': 'Ascension', 'Достигни 10 уровня.': 'Reach level 10.',
+    'Полубог': 'Demigod', 'Достигни 25 уровня.': 'Reach level 25.',
+    'Владыка': 'Overlord', 'Достигни 50 уровня.': 'Reach level 50.',
+    'Богач': 'Rich Man', 'Накопи 10 000 золота.': 'Accumulate 10,000 gold.',
+    'Модник': 'Fashionista', 'Сохрани сборку экипировки.': 'Save an equipment loadout.',
+    'Коллекционер': 'Collector', 'Собери полный комплект любого сета.': 'Collect a full set of any gear set.',
+    'Архивариус': 'Archivist', 'Открой в Кодексе все 7 сетов.': 'Unlock all 7 sets in the Codex.',
+    'Прикосновение легенды': 'Touch of Legend', 'Найди предмет легендарной рарности.': 'Find a legendary rarity item.',
+    'Миф во плоти': 'Myth Incarnate', 'Найди предмет мифической рарности.': 'Find a mythic rarity item.',
+    'Покоритель миров': 'World Conqueror', 'Победи всех мобов во всех 12 мирах.': 'Defeat all mobs in all 12 worlds.',
+
+    // --- Ежедневные задания ---
+    'Истребление': 'Extermination', 'Убей 30 мобов в походах': 'Kill 30 mobs on expeditions',
+    'Походы': 'Expeditions', 'Соверши 5 походов': 'Complete 5 expeditions',
+    'Босс дня': 'Boss of the Day', 'Победи 1 босса': 'Defeat 1 boss',
+    'Арена': 'Arena', 'Победи 3 раза на Арене': 'Win 3 times in the Arena',
+    'Заготовка': 'Gathering', 'Добудь 20 ресурсов руками': 'Gather 20 resources by hand',
+    'Ремесло': 'Crafting', 'Создай 3 предмета': 'Craft 3 items',
+
+    // --- Квесты (цепочка) ---
+    'Спуститься вниз': 'Descend Below', 'Достигни Лестницы в Небо и соверши первый поход в мир смертных.': 'Reach the Stairway to Heaven and make your first expedition into the mortal world.',
+    'Истребитель тварей': 'Beast Slayer', 'Убей мобов. Градиент 10 / 100 / 1000.': 'Kill mobs. Tiers 10 / 100 / 1000.',
+    'Заготовщик': 'Harvester', 'Добудь ресурсы своими руками. Градиент 10 / 100 / 1000.': 'Gather resources by hand. Tiers 10 / 100 / 1000.',
+    'Мастеровой': 'Craftsman', 'Создай предметы в мастерских. Градиент 1 / 10 / 100.': 'Craft items in workshops. Tiers 1 / 10 / 100.',
+    'Стяжатель': 'Hoarder', 'Накопи золото. Градиент 100 / 1000 / 10000.': 'Accumulate gold. Tiers 100 / 1000 / 10000.',
+    'Побывай в разных локациях миров. Градиент 3 / 12 / 30.': 'Visit different world locations. Tiers 3 / 12 / 30.',
+    'ПвП воин': 'PvP Warrior', 'Победи других игроков на арене. Градиент 1 / 10 / 50.': 'Defeat other players in the arena. Tiers 1 / 10 / 50.',
+    'Охотник на боссов': 'Boss Hunter', 'Сразись и победи боссов в мирах. Градиент 1 / 5 / 20.': 'Fight and defeat bosses in the worlds. Tiers 1 / 5 / 20.',
+    'Мастер магии': 'Master of Magic', 'Изучи заклинания. Градиент 3 / 8 / 12.': 'Learn spells. Tiers 3 / 8 / 12.',
+
+    // --- Навыки ---
+    'Режущее оружие': 'Slashing weapons', 'Колющее оружие': 'Piercing weapons', 'Рубящее оружие': 'Cleaving weapons',
+    'Дробящее оружие': 'Crushing weapons', 'Стрелковое оружие': 'Ranged weapons', 'Лёгкая броня': 'Light armor',
+    'Средняя броня': 'Medium armor', 'Тяжёлая броня': 'Heavy armor', 'Приручение': 'Taming',
+
+    // --- Улучшения клана ---
+    'Артефакт клана': 'Clan Artifact', 'Сокровищница': 'Treasury', 'Клановая кузня': 'Clan Forge', 'Алтарь предков': 'Altar of Ancestors',
+    '+1 ко всем статам каждому участнику за уровень': '+1 to all stats for each member per level',
+    '+5% золота с походов за уровень': '+5% gold from expeditions per level',
+    '+1 ресурс-трофей с боя за уровень': '+1 loot resource per fight per level',
+    '+5% опыта с походов за уровень': '+5% experience from expeditions per level',
+
+    // --- Ранги магов ---
+    'Послушник': 'Acolyte', 'Эксперт': 'Expert', 'Грандмастер': 'Grandmaster',
+
+    // --- Постройки нижнего мира ---
+    'Город': 'City', 'Лесопилка': 'Sawmill', 'Каменоломня': 'Quarry', 'Рудник': 'Mine', 'Ферма': 'Farm',
+
+    // --- Источники добычи ---
+    'Срубить дерево': 'Chop wood', 'Наколоть камня': 'Mine stone', 'Добыть руду': 'Mine ore', 'Собрать волокно': 'Collect fiber',
+    'Собрать ромашку': 'Pick chamomile', 'Собрать мухоморы': 'Pick fly agarics', 'Наколоть слюды': 'Chip mica',
+    'Набрать песка': 'Scoop sand', 'Выпарить соль': 'Evaporate salt', 'Снять тонкую шкуру': 'Skin thin hide',
+
+    // --- Тосты/прочие шаблоны ---
+    '❌ Нужно {gold}🪙 + {sparks}🔥 + {gem}💎.': '❌ Need {gold}🪙 + {sparks}🔥 + {gem}💎.',
+    '❌ Нужно {gold}🪙 + {sparks}🔥.': '❌ Need {gold}🪙 + {sparks}🔥.',
+    '🎁 +{gold} золота!': '🎁 +{gold} gold!',
+    '🏘️ Собрано: {str}': '🏘️ Collected: {str}',
+    '🏗️ {b} ур.{lvl} готов!': '🏗️ {b} lv.{lvl} ready!',
+    '{icon} {prof} ур. {lvl}': '{icon} {prof} lv. {lvl}',
+    '🎉 Уровень {lvl}!': '🎉 Level {lvl}!',
+    '🎁 +{n} 🪙 от рефералов!': '🎁 +{n} 🪙 from referrals!',
+    '💰 +{n} 🪙 за проданные лоты!': '💰 +{n} 🪙 for sold lots!',
+    '🪙 Нужно {n} золота': '🪙 Need {n} gold',
+    '⏳ Перезарядка ~{n} мин': '⏳ Cooldown ~{n} min',
+
+    // --- Системные сообщения (лог, тосты, диалоги) ---
+    '✅ Квест «{q}» — этап {stage}! Награда: {rstr}.': '✅ Quest «{q}» — stage {stage}! Reward: {rstr}.',
+    'Сегодня награда за вход уже получена.': "Today's login reward has already been claimed.",
+    '🎁 Награда за вход (день {streak} подряд): +{r}.': '🎁 Login reward (day {streak} in a row): +{r}.',
+    '❌ Задание ещё не выполнено.': '❌ The task is not completed yet.',
+    '🎁 Ежедневное «{q}» выполнено! +{r}.': '🎁 Daily «{q}» completed! +{r}.',
+    '🌟 Все ежедневные выполнены! Бонус: +{r}.': '🌟 All dailies completed! Bonus: +{r}.',
+    '🌟 Ежедневные выполнены!': '🌟 Dailies completed!',
+    '🏆 Достижение «{a}»!{rstr}': '🏆 Achievement «{a}»!{rstr}',
+    '⛔ Лимит добычи на час исчерпан ({cap}/час). Сброс через {min} мин.': '⛔ Hourly gathering limit reached ({cap}/hour). Reset in {min} min.',
+    '❌ Недостаточно ресурсов для крафта.': '❌ Not enough resources to craft.',
+    '⛔ Лимит производства на час исчерпан ({cap}/час). Сброс через {min} мин.': '⛔ Hourly production limit reached ({cap}/hour). Reset in {min} min.',
+    '🔧 Создано ×{made}: {out}.{lim}': '🔧 Crafted ×{made}: {out}.{lim}',
+    'лимит': 'limit', 'час': 'hour', 'осталось 0': '0 left',
+    '🔧 Создано: {qty}× {res}.': '🔧 Crafted: {qty}× {res}.',
+    '🔧 Создан предмет: {item}{tags}.': '🔧 Item crafted: {item}{tags}.',
+    '❌ Сначала найди хотя бы одну часть этого сета в походе.': '❌ First find at least one part of this set on an expedition.',
+    '❌ Недостаточно ресурсов для ковки.': '❌ Not enough resources to forge.',
+    '🔥 Скована часть сета: {item} [{rar}].': '🔥 Set part forged: {item} [{rar}].',
+    '❌ Нужно {gem} 💎 камней и {sparks} 🔥 искр.': '❌ Need {gem} 💎 gems and {sparks} 🔥 sparks.',
+    '💎 Создан усилитель: {enh} {rom} (+{bonus} {stat}).': '💎 Enhancer created: {enh} {rom} (+{bonus} {stat}).',
+    '🔒 Арендованную вещь нельзя изменять — только носить.': '🔒 A rented item cannot be modified — only worn.',
+    '❌ Больше гнёзд не просверлить (макс {max} для рарности).': '❌ No more sockets can be drilled (max {max} for this rarity).',
+    '❌ Нужно {cost} 🔥 искр на гнездо.': '❌ Need {cost} 🔥 sparks for a socket.',
+    '🛠 Просверлено гнездо {n}/{max} в «{item}» за {cost} 🔥.': '🛠 Socket {n}/{max} drilled in «{item}» for {cost} 🔥.',
+    '❌ Гнездо занято.': '❌ The socket is occupied.',
+    '💎 «{gem}» вставлен в «{item}».': '💎 «{gem}» inserted into «{item}».',
+    '💎 «{gem}» извлечён из «{item}».': '💎 «{gem}» removed from «{item}».',
+    '🔒 Арендованную вещь нельзя точить — только носить.': '🔒 A rented item cannot be enhanced — only worn.',
+    '❌ Максимальная заточка (+{max}).': '❌ Maximum enhancement (+{max}).',
+    '❌ Недостаточно ресурсов для заточки.': '❌ Not enough resources to enhance.',
+    '⚒️ Заточка: {item} +{plus}!': '⚒️ Enhanced: {item} +{plus}!',
+    '❌ Уже максимальная рарность (Мифический).': '❌ Already maximum rarity (Mythic).',
+    '❌ Недостаточно ресурсов для перековки.': '❌ Not enough resources to reforge.',
+    '🔨 Перековка: {item}{plus} → [{rar}]!': '🔨 Reforged: {item}{plus} → [{rar}]!',
+    '❌ Требуется {stat} {v} для «{item}» (у вас {have}).': '❌ Requires {stat} {v} for «{item}» (you have {have}).',
+    '🎽 Надето: {item}.': '🎽 Equipped: {item}.',
+    '❌ Нечего сохранять — экипировка пуста.': '❌ Nothing to save — equipment is empty.',
+    '❌ Лимит сборок ({max}). Удалите лишнюю.': '❌ Loadout limit ({max}). Delete one.',
+    '💾 Сборка «{name}» сохранена.': '💾 Loadout «{name}» saved.',
+    '❌ Нет частей сета «{set}» в наличии.': '❌ No parts of set «{set}» available.',
+    '🎽 Надет комплект «{set}» — лучшие части ({picked}/{total}).': '🎽 Set «{set}» equipped — best parts ({picked}/{total}).',
+    '🎽 Надета сборка «{name}»{missing}.': '🎽 Loadout «{name}» equipped{missing}.',
+    'предметов уже нет': 'items no longer exist',
+    '🗑 Сборка «{name}» удалена.': '🗑 Loadout «{name}» deleted.',
+    '🔒 Арендованную вещь нельзя выбросить — верните её в арсенал.': '🔒 A rented item cannot be dropped — return it to the armory.',
+    '🐾 Лимит активных питомцев ({cap}). Поднимайте навык Приручение.': '🐾 Active pet limit ({cap}). Raise the Taming skill.',
+    'Отпустить питомца на волю?': 'Release the pet into the wild?',
+    '🐾 Питомец отпущен на волю.': '🐾 The pet was released into the wild.',
+    '❌ Нужно {n} 🪙 на членский взнос.': '❌ Need {n} 🪙 for the membership fee.',
+    '🔮 Вы вступили в Гильдию магов!': '🔮 You joined the Mage Guild!',
+    '🔮 Сначала вступите в Гильдию магов.': '🔮 First join the Mage Guild.',
+    '❌ Для вашего ранга максимум улучшения +{cap}. Поднимайте уровни стихий.': '❌ For your rank the max upgrade is +{cap}. Raise your element levels.',
+    '🔮 «{spell}» улучшено до +{plus}.': '🔮 «{spell}» upgraded to +{plus}.',
+    '❌ Нужен ранг «{rank}» — поднимайте уровни стихий.': '❌ Rank «{rank}» required — raise your element levels.',
+    '📜 Изучено заклинание «{spell}»!': '📜 Spell «{spell}» learned!',
+    '❌ Недостаточно ресурсов для починки.': '❌ Not enough resources to repair.',
+    '🔧 «{item}» починено (−{gold} 🪙{sparks}).': '🔧 «{item}» repaired (−{gold} 🪙{sparks}).',
+    '🪙 Недостаточно золота.': '🪙 Not enough gold.',
+    '🛒 Куплено {qty}× {res} за {cost} золота.': '🛒 Bought {qty}× {res} for {cost} gold.',
+    '💰 Продано {qty}× {res} за {sum} золота.': '💰 Sold {qty}× {res} for {sum} gold.',
+    '🪙 Недостаточно золота на снаряжение.': '🪙 Not enough gold for the gear.',
+    '🛒 Куплено снаряжение: {item} за {price} 🪙.': '🛒 Gear bought: {item} for {price} 🪙.',
+    '👻 Нет Душ для обмена.': '👻 No Souls to exchange.',
+    '🏛️ 1 Душа → 1000 Золота.': '🏛️ 1 Soul → 1000 Gold.',
+    '🏛️ 1 Душа → 1000 Искр.': '🏛️ 1 Soul → 1000 Sparks.',
+    '🪙 Недостаточно золота для ставки.': '🪙 Not enough gold for the bet.',
+    '🎲 Ты {me} против {house} — победа! +{bet} 🪙': '🎲 You {me} vs {house} — win! +{bet} 🪙',
+    '🎲 Ничья {me}:{house} — ставка возвращена.': '🎲 Draw {me}:{house} — bet returned.',
+    '🎲 Ты {me} против {house} — проигрыш. −{bet} 🪙': '🎲 You {me} vs {house} — loss. −{bet} 🪙',
+    '🥤 Шарик под №{n} — угадал! +{win} 🪙': '🥤 Ball under #{n} — correct! +{win} 🪙',
+    '🥤 Шарик был под №{ball}, ты выбрал №{pick}. −{bet} 🪙': '🥤 The ball was under #{ball}, you chose #{pick}. −{bet} 🪙',
+    '🪙 Билет стоит {price} золота.': '🪙 A ticket costs {price} gold.',
+    '🎟️ Пусто. Удача отвернулась.': '🎟️ Nothing. Luck turned away.',
+    '🎟️ Мелкий выигрыш: +50 🪙': '🎟️ Small win: +50 🪙',
+    '🎟️ Неплохо: +150 🪙': '🎟️ Not bad: +150 🪙',
+    '🎟️ Джекпот искр: +200 🔥': '🎟️ Spark jackpot: +200 🔥',
+    '🎟️ 💎 СУПЕРПРИЗ: +1 Душа!': '🎟️ 💎 SUPER PRIZE: +1 Soul!',
+    '🏘️ Пока нечего собирать — смертные ещё трудятся.': '🏘️ Nothing to collect yet — the mortals are still working.',
+    '🏘️ Собран урожай нижнего мира: {str}.': '🏘️ Lower World harvest collected: {str}.',
+    '🏗️ {b} достроен до уровня {lvl}!': '🏗️ {b} built up to level {lvl}!',
+    '🏗️ Нельзя строить: {why}.': '🏗️ Cannot build: {why}.',
+    '🏗️ Начата стройка: {b} → ур. {lvl} ({dur}). Списано {cost} 🪙.': '🏗️ Construction started: {b} → lv. {lvl} ({dur}). Spent {cost} 🪙.',
+    '👻 Нужно {cost} Душ для ускорения.': '👻 Need {cost} Souls to speed up.',
+    '🔒 Этот мир ещё закрыт — нужен уровень и зачистка предыдущего мира.': '🔒 This world is still locked — you need the level and to clear the previous world.',
+    '{ic} PvP vs {opp}: {res}! Золото {sign}{gold}, XP +{xp}{cap}': '{ic} PvP vs {opp}: {res}! Gold {sign}{gold}, XP +{xp}{cap}',
+    'победа': 'victory', 'поражение': 'defeat',
+    'Укажите количество': 'Specify the quantity', 'Укажите цену': 'Specify the price', 'Недостаточно ресурса': 'Not enough of the resource',
+    '❌ Не удалось выставить лот{lim}.': '❌ Failed to list the lot{lim}.', '(лимит лотов)': '(lot limit)',
+    '🏷️ Лот выставлен: {qty}× {res} за {price} 🪙.': '🏷️ Lot listed: {qty}× {res} for {price} 🪙.',
+    'Нельзя продать арендованное — верните в арсенал': 'Cannot sell a rented item — return it to the armory',
+    '🏷️ Лот выставлен: «{item}» за {price} 🪙.': '🏷️ Lot listed: «{item}» for {price} 🪙.',
+    'Лот недоступен': 'Lot unavailable', '🪙 Недостаточно золота': '🪙 Not enough gold',
+    '❌ Покупка не удалась: {why}.': '❌ Purchase failed: {why}.',
+    '🛍️ Куплено: {qty}× {res} за {price} 🪙.': '🛍️ Bought: {qty}× {res} for {price} 🪙.',
+    '🛍️ Куплено: «{item}» за {price} 🪙.': '🛍️ Bought: «{item}» for {price} 🪙.',
+    '❌ Не удалось снять лот.': '❌ Failed to remove the lot.',
+    '↩️ Лот снят, возвращено {qty}× {res}.': '↩️ Lot removed, {qty}× {res} returned.',
+    '↩️ Лот снят, «{item}» вернулся в рюкзак.': '↩️ Lot removed, «{item}» returned to the backpack.',
+    'Название от 3 символов': 'Name must be at least 3 characters',
+    '🛡 Клан «{name}» основан! Списано {cost} 🪙.': '🛡 Clan «{name}» founded! Spent {cost} 🪙.',
+    '❌ Не удалось вступить: {why}.': '❌ Failed to join: {why}.',
+    'вы уже в клане': 'you are already in a clan', 'клан переполнен': 'the clan is full', 'клан не найден': 'clan not found', 'ошибка': 'error',
+    '📨 Заявка отправлена — ждите решения лидера.': "📨 Application sent — await the leader's decision.",
+    '📨 Заявка отправлена': '📨 Application sent', '🛡 Вы вступили в клан!': '🛡 You joined the clan!',
+    '❌ Не вышло: {why}.': '❌ Failed: {why}.',
+    'Исключить участника из клана?': 'Kick this member from the clan?',
+    'Передать лидерство этому участнику? Вы станете офицером.': 'Transfer leadership to this member? You will become an officer.',
+    'Покинуть клан? Бонус клана пропадёт.': 'Leave the clan? The clan bonus will be lost.',
+    '❌ Не удалось покинуть клан.': '❌ Failed to leave the clan.', '🚪 Вы покинули клан.': '🚪 You left the clan.',
+    'Укажите сумму': 'Specify the amount', '❌ Взнос не прошёл.': '❌ The contribution failed.',
+    '💰 Взнос в казну клана: {amount} 🪙.': '💰 Contribution to the clan treasury: {amount} 🪙.',
+    '❌ Улучшение не прошло: {why}.': '❌ Upgrade failed: {why}.',
+    'мало золота в казне': 'not enough gold in the treasury', 'только лидер': 'leader only', 'уже максимум': 'already maxed',
+    '⚜️ Клан улучшен: {name}!': '⚜️ Clan upgraded: {name}!',
+    '❌ Не удалось обновить сообщение.': '❌ Failed to update the message.', '📢 Сообщение дня обновлено.': '📢 Message of the day updated.',
+    '🔒 Арендованное вернулось владельцу: {items}.': '🔒 Rented items returned to the owner: {items}.',
+    'Можно одолжить только экипировку': 'Only equipment can be lent', 'Нельзя одолжить арендованное': 'A rented item cannot be lent',
+    '❌ Не удалось одолжить: {why}.': '❌ Failed to lend: {why}.',
+    'арсенал переполнен': 'the armory is full', 'лимит 20 вещей от вас': 'limit of 20 items from you', 'не экипировка': 'not equipment',
+    '📦 «{item}» выставлено в клановый арсенал.': '📦 «{item}» placed in the clan armory.',
+    'Уже арендовано': 'Already rented', '❌ Не удалось арендовать: {why}.': '❌ Failed to rent: {why}.',
+    'уже арендовано': 'already rented', 'это ваша вещь': 'this is your item',
+    '🔑 Арендовано: «{item}» (владелец: {owner}). Можно только носить.': '🔑 Rented: «{item}» (owner: {owner}). Can only be worn.',
+    '❌ Не удалось вернуть аренду.': '❌ Failed to return the rental.', '↩️ Аренда возвращена в арсенал.': '↩️ Rental returned to the armory.',
+    '❌ Не удалось забрать вещь.': '❌ Failed to retrieve the item.', '📥 «{item}» возвращена в ваш инвентарь.': '📥 «{item}» returned to your inventory.',
+    'Рейд недоступен': 'Raid unavailable', '⚔️ Боссу клана нанесено {dmg} урона.': '⚔️ Dealt {dmg} damage to the clan boss.',
+    '🐉 Босс клана повержен! Забери награду: Кланы → Рейд.': '🐉 The clan boss is defeated! Claim your reward: Clans → Raid.',
+    '❌ Награды нет.': '❌ No reward.', '🎁 Награда за рейд: +{gold} 🪙, +{sparks} ✨{xp}.': '🎁 Raid reward: +{gold} 🪙, +{sparks} ✨{xp}.',
+    'опыта': 'XP', 'Доступно только в Telegram': 'Available only in Telegram',
+    '❌ Промокод уже вводился.': '❌ A promo code was already entered.',
+    '⌛ Окно ввода промокода (7 дней) истекло.': '⌛ The promo code window (7 days) has expired.',
+    'Введите промокод': 'Enter a promo code', '❌ Неверный промокод.': '❌ Invalid promo code.',
+    '❌ Нельзя ввести свой промокод.': '❌ You cannot enter your own promo code.',
+    '🎁 Промокод принят! +500 🪙 и +100 🔥. Пригласившему начислится награда при синхронизации.': '🎁 Promo code accepted! +500 🪙 and +100 🔥. The inviter will be rewarded on sync.',
+    '🎁 Промокод принят: +500 🪙, +100 🔥': '🎁 Promo code accepted: +500 🪙, +100 🔥',
+    '📋 Промокод скопирован: ': '📋 Promo code copied: ', 'Промокод: ': 'Promo code: ', '🔗 Ссылка скопирована!': '🔗 Link copied!',
+    '📘 Навык «{skill}» вырос до {n}!': '📘 Skill «{skill}» grew to {n}!',
+    '📈 {stat} выросла до {v}!': '📈 {stat} grew to {v}!',
+    '📈 {icon} {prof}: уровень {lvl} ({title})!': '📈 {icon} {prof}: level {lvl} ({title})!',
+    '📜 Тайное знание: изучен рецепт «{rec}»!': '📜 Secret knowledge: recipe «{rec}» learned!',
+    '🎉 Новый уровень {lvl}! Полное восстановление и +{n} 🔥 искр.': '🎉 New level {lvl}! Full restore and +{n} 🔥 sparks.',
+    '⚠️ «{item}» сломалось — почините, чтобы вернуть свойства.': '⚠️ «{item}» broke — repair it to restore its properties.',
+    '🎁 Бонус от рефералов: +{n} 🪙': '🎁 Referral bonus: +{n} 🪙', '💰 Выручка с барахолки: +{n} 🪙': '💰 Marketplace earnings: +{n} 🪙',
+    '🐾 Приручён питомец: {pet}{active}.': '🐾 Pet tamed: {pet}{active}.', '(в строю)': '(in party)',
+    '🏆 Победа над: {mobs}.': '🏆 Victory over: {mobs}.', '☠️ Поражение в бою{lost}.': '☠️ Defeated in battle{lost}.', 'золота': 'gold',
+
+    // --- Классы сетов ---
+    'Ассасин': 'Assassin', 'Берсерк': 'Berserker', 'Воин': 'Warrior', 'Лучник': 'Archer', 'Паладин': 'Paladin', 'Танк': 'Tank',
+
+    // --- Интро миров ---
+    'Шелест трав и пение птиц… но мелкие твари ходят стаями.': 'Rustling grass and birdsong… but small critters roam in packs.',
+    'Любимое место охотников. Дичи всё меньше — виной непослушная молодёжь.': "Hunters' favorite spot. Game grows scarce — blame the unruly youth.",
+    'Тёмный сырой лабиринт с ископаемыми и негостеприимными сущностями.': 'A dark, damp labyrinth with fossils and inhospitable creatures.',
+    'Бивни скал, живописные пейзажи и вечно голодные звери.': 'Fangs of rock, scenic views and ever-hungry beasts.',
+    'Ни воды, ни растений — у самой природы стервозный характер.': 'No water, no plants — nature itself has a vicious temper.',
+    'Ядовитые растения, трясины, москиты и незабываемая вонь.': 'Poisonous plants, swamps, mosquitoes and an unforgettable stench.',
+    'Запаситесь воздухом и смажьте доспехи, чтоб не заржавели.': 'Stock up on air and oil your armor so it does not rust.',
+    'Скелеты и зомби — мелочь, а вот вампир или некромант — достойный противник.': 'Skeletons and zombies are small fry, but a vampire or necromancer is a worthy foe.',
+    'За каждым камнем — толстокожие огнеупорные твари, мечтающие о свежем мясце.': 'Behind every rock lurk thick-skinned, fireproof beasts dreaming of fresh meat.',
+    'Мир необычайной красоты, но внешность бывает обманчива.': 'A world of extraordinary beauty, but looks can be deceiving.',
+    'Родной дом самых страшных и извращённых существ. Сюда не стоит попадать даже после смерти.': 'Home to the most terrible and twisted beings. A place to avoid even after death.',
+    'То место, куда все стремятся. Но непрошеных гостей ждут муки, рядом с которыми сатана — дилетант.': 'The place everyone aspires to. But uninvited guests face torments next to which Satan is an amateur.',
+
+    // --- Здания башни (названия + описания) ---
+    'Покои героя': "Hero's Chambers", 'Лестница в Небо': 'Stairway to Heaven', 'Нижний мир': 'Lower World',
+    'Мастерские': 'Workshops', 'Лаборатории': 'Laboratory', 'Магазин': 'Shop', 'Академия': 'Academy',
+    'Барахолка': 'Marketplace', 'Таверна': 'Tavern', 'Банк': 'Bank', 'Чат мира': 'World Chat',
+    'Гильдия магов': 'Mage Guild', 'Совет старейшин': 'Council of Elders',
+    'Экипировка, рюкзак, статы, дары дня и коллекция сетов.': 'Equipment, backpack, stats, daily gifts and set collection.',
+    'Спуститься в миры и выбрать локацию для похода.': 'Descend into the worlds and choose a location for an expedition.',
+    'Города и шахты смертных: пассивная добыча ресурсов во времени (раздел GDD «нижний мир»).': 'Cities and mines of mortals: passive resource gathering over time (GDD «lower world» section).',
+    'Тренировочные бои с двойником ради опыта.': 'Training fights with a double for experience.',
+    'Переработка ресурсов и создание оружия, брони, бижутерии.': 'Processing resources and crafting weapons, armor and jewelry.',
+    'Эликсиры, зелья и мази.': 'Elixirs, potions and balms.',
+    'Купить ресурсы и расходники за золото, продать трофеи.': 'Buy resources and consumables for gold, sell loot.',
+    'База знаний об открытых мирах и статистика.': 'Knowledge base on discovered worlds and statistics.',
+    'Торговля между игроками: выставляй лоты и покупай у других (раздел GDD «Барахолка»).': 'Trading between players: list lots and buy from others (GDD «Marketplace» section).',
+    'Азартные игры на золото: кости, напёрстки и лотерея (раздел GDD «Таверна»).': 'Gambling for gold: dice, thimbles and lottery (GDD «Tavern» section).',
+    'Обмен Душ на Золото и Искры (монетизация GDD).': 'Exchange Souls for Gold and Sparks (GDD monetization).',
+    'Объедините полубогов в клан: общая казна и пассивный бонус всем участникам (раздел GDD «кланы»).': 'Unite demigods into a clan: a shared treasury and a passive bonus for all members (GDD «clans» section).',
+    'Общий живой чат всех полубогов.': 'Shared live chat for all demigods.',
+    'Членство, ранги, улучшение и изучение заклинаний (раздел GDD «Гильдия магов»).': 'Membership, ranks, upgrading and learning spells (GDD «Mage Guild» section).',
+    'Журнал заданий — большая часть квестов берётся здесь.': 'Quest log — most quests are taken here.',
+
+    // --- Энциклопедия: заголовки ---
+    'О мире и валютах': 'About the World and Currencies', 'Статы (9 характеристик)': 'Stats (9 attributes)',
+    'Уровень, опыт и «опасность»': 'Level, experience and «danger»', 'Бой': 'Combat',
+    'Магия (4 стихии × 3 направления)': 'Magic (4 elements × 3 directions)', 'Мастерские, крафт и топливо': 'Workshops, crafting and fuel',
+    'Алхимия (Лаборатории)': 'Alchemy (Laboratory)', 'Рарность, классовые сеты и сборки': 'Rarity, class sets and loadouts',
+    'Походы и миры': 'Expeditions and Worlds', 'Бестиарий (мобы по мирам)': 'Bestiary (mobs by world)',
+    'Квесты (Совет старейшин)': 'Quests (Council of Elders)', 'Здания Вавилонской башни': 'Buildings of the Babylon Tower',
+    'Банк и монетизация': 'Bank and Monetization', 'Стихия': 'Element', 'к статам': 'to stats', 'Снаряжение': 'Equipment',
+
+    // --- Энциклопедия: проза ---
+    '«Вавилон» — мир из двух частей, соединённых башней-цитаделью. Игроки приходят как полубоги.': '«Babylon» is a world of two parts joined by a citadel-tower. Players arrive as demigods.',
+    'Нижний мир — мир смертных (стратегия и ресурсы), верхний — нестабильные локации (РПГ-походы). Вавилонская башня в центре — ваш дом и хаб.': 'The Lower World is the realm of mortals (strategy and resources), the upper one is unstable locations (RPG expeditions). The Babylon Tower at the center is your home and hub.',
+    'Три особые валюты:': 'Three special currencies:',
+    '🪙 <b>Золото</b> — игровые деньги: покупки в магазине, торговля.': '🪙 <b>Gold</b> — in-game money: shop purchases, trading.',
+    '👻 <b>Души</b> — премиум-валюта (в полной версии — реальные средства). Меняются в Банке.': '👻 <b>Souls</b> — premium currency (real funds in the full version). Exchanged at the Bank.',
+    '🔥 <b>Искры</b> — «божественные искры» для крафта и заточки. Добываются в верхнем мире (походы): чем глубже тир локации, тем активнее сыплются.': '🔥 <b>Sparks</b> — «divine sparks» for crafting and enhancing. Mined in the upper world (expeditions): the deeper the location tier, the more they pour in.',
+    '💎 <b>Камни</b> (самоцветы для усилителей) тоже добываются в верхнем мире — выпадают с боёв, и тем чаще, чем глубже тир. В магазине есть, но дорого.': '💎 <b>Gems</b> (stones for enhancers) are also mined in the upper world — they drop from fights, more often at deeper tiers. Available in the shop, but expensive.',
+    'У героя 9 характеристик. Каждая растёт от использования по геометрической прогрессии (планка 100 → 200 → 400…). Прогресс виден полосками в Покоях героя.': "The hero has 9 attributes. Each grows from use along a geometric progression (threshold 100 → 200 → 400…). Progress is shown by bars in the Hero's Chambers.",
+    'Есть две прокачки, и они дополняют друг друга:': 'There are two progression tracks, and they complement each other:',
+    '<b>Уровень</b> — классический, растёт от опыта за бои (зелёная полоска в шапке). За новый уровень: полное восстановление HP/MP и награда искрами. Планка следующего уровня: 100 → 175 → 250…': '<b>Level</b> — classic, grows from combat experience (green bar at the top). Each new level: full HP/MP restore and a spark reward. Next level threshold: 100 → 175 → 250…',
+    '<b>Опасность</b> — боевая мощь героя, считается из суммы статов. Влияет на силу тренировочного двойника на Арене.': "<b>Danger</b> — the hero's combat power, computed from the sum of stats. Affects the strength of the training double in the Arena.",
+    'Опыт капает за убитых мобов (больше за старшие миры, ×3 за боссов).': 'Experience drips in for slain mobs (more for higher worlds, ×3 for bosses).',
+    'Бой пораундовый. Каждый раунд вы выбираете зону атаки и зону блока (голова, торс, руки, ноги), либо кастуете заклинание, либо пьёте эликсир, либо бежите.': 'Combat is round-based. Each round you choose an attack zone and a block zone (head, torso, arms, legs), or cast a spell, drink an elixir, or flee.',
+    'Если враг бьёт в зону, которую вы заблокировали — урон режется.': 'If the enemy hits a zone you blocked — the damage is reduced.',
+    'Возможны криты (Ярость — физ., Вера — маг.) и контрудары (Реакция — физ., Отражение — маг.).': 'Crits are possible (Fury — phys., Faith — magic) and counters (Reaction — phys., Reflection — magic).',
+    'Удача повышает шанс макс. урона и ценных трофеев.': 'Luck increases the chance of max damage and valuable loot.',
+    'Поражение не убивает насовсем — вы возвращаетесь в башню ослабленным (HP ~30%) и теряете 10% золота.': 'Defeat is not permanent — you return to the tower weakened (HP ~30%) and lose 10% of your gold.',
+    'Сложность локации (75–200%) — ваш регулятор челленджа. Высокие миры без прокачки непроходимы: качайтесь и улучшайте снаряжение.': 'Location difficulty (75–200%) is your challenge dial. High worlds are impassable without progression: level up and improve your gear.',
+    'Тренироваться без риска можно на Арене (бой с тёмным двойником).': 'You can train risk-free in the Arena (a fight against your dark double).',
+    '(свет и тьма частично взаимоисключающие, сумрак нейтрален). Каст повышает уровень стихии, направления и Интеллект.': '(light and dark are partly mutually exclusive, twilight is neutral). Casting raises the level of the element, the direction and Intellect.',
+    '<b>Где смотреть свои заклинания:</b> Покои героя → блок «Магия». <b>Как применять:</b> только в бою — выпадающий список «Заклинание» → «✨ Каст». Новые заклинания (формулы) иногда выпадают трофеем из мобов.': "<b>Where to view your spells:</b> Hero's Chambers → «Magic» block. <b>How to use:</b> only in combat — the «Spell» dropdown → «✨ Cast». New spells (formulas) sometimes drop as loot from mobs.",
+    'Ресурсы делятся на уровни. 1 уровень добывается руками/в боях, 2 уровень производится в мастерских.': 'Resources are split into tiers. Tier 1 is gathered by hand / in combat, tier 2 is produced in workshops.',
+    '<b>1 уровень:</b>': '<b>Tier 1:</b>', '<b>2 уровень:</b>': '<b>Tier 2:</b>',
+    '<b>Особые:</b> 🪙 Золото, 👻 Души, 🔥 Искры': '<b>Special:</b> 🪙 Gold, 👻 Souls, 🔥 Sparks',
+    'Добыть ресурсы 1 уровня: Нижний мир → «Добыть руками» (бесплатно), пассивная добыча построек смертных, покупка за золото в Магазине; ещё они падают трофеями в боях.': 'To obtain tier 1 resources: Lower World → «Gather by hand» (free), passive gathering from mortal buildings, buying for gold in the Shop; they also drop as loot in combat.',
+    'В Мастерских ресурсы 1 уровня перерабатываются во 2 уровень, а из них создаются оружие, броня и бижутерия.': 'In Workshops, tier 1 resources are processed into tier 2, from which weapons, armor and jewelry are crafted.',
+    '<b>Что такое топливо.</b> Это не отдельная кнопка, а ресурс — древесный уголь или брёвна. Оно тратится автоматически при создании вещей, которым нужна высокая температура. Правило:': '<b>What is fuel.</b> It is not a separate button but a resource — charcoal or logs. It is spent automatically when crafting items that need high heat. The rule:',
+    '<b>1 топливо = 1 древесный уголь</b> (даёт закалку, +качество предмета), <b>или</b>': '<b>1 fuel = 1 charcoal</b> (tempers the item, +quality), <b>or</b>',
+    '<b>1 топливо = 6 брёвен</b> (если угля нет; качество обычное).': '<b>1 fuel = 6 logs</b> (if there is no charcoal; ordinary quality).',
+    '<b>Где взять:</b> брёвна — Магазин → «Срубить дерево»; уголь — Мастерские → «Переработка ресурсов» → «Древесный уголь» (5 брёвен → 1 уголь).': '<b>Where to get it:</b> logs — Shop → «Chop wood»; charcoal — Workshops → «Resource processing» → «Charcoal» (5 logs → 1 charcoal).',
+    '<b>Цепочка для оружия/брони:</b> брёвна → (уголь) и руда → металл → сам предмет (металл + доска + искры + топливо).': '<b>Chain for weapons/armor:</b> logs → (charcoal) and ore → metal → the item itself (metal + plank + sparks + fuel).',
+    'Алхимия делится на три вида:': 'Alchemy is divided into three kinds:',
+    '<b>Эликсиры</b> — применяются в бою (восстанавливают HP или MP).': '<b>Elixirs</b> — used in combat (restore HP or MP).',
+    '<b>Зелья</b> — бросаются во врага, наносят урон.': '<b>Potions</b> — thrown at the enemy, deal damage.',
+    '<b>Мази</b> — применяются вне боя, дают временные усиления.': '<b>Balms</b> — used outside combat, give temporary buffs.',
+    'Создаются в Лабораториях из трав, грибов и слюды. Эликсиры/зелья используются прямо в окне боя.': 'Crafted in Laboratories from herbs, mushrooms and mica. Elixirs/potions are used right in the combat window.',
+    'Слоты: оружие, шлем, доспех, щит, кольцо, амулет, серьги. Надеть вещь можно в Покоях героя (кнопка «надеть»), если хватает требуемых статов.': "Slots: weapon, helmet, armor, shield, ring, amulet, earrings. You can equip an item in the Hero's Chambers (the «equip» button) if you meet the required stats.",
+    '<b>Оружие</b> — урон, дистанция (ближняя/средняя/дальняя), одноручное/двуручное.': '<b>Weapon</b> — damage, range (melee/mid/ranged), one-handed/two-handed.',
+    '<b>Броня</b> — лёгкая/средняя/тяжёлая, добавляет защиту и броню.': '<b>Armor</b> — light/medium/heavy, adds defense and armor.',
+    '<b>Бижутерия</b> — не даёт физзащиты, но усиливает статы (энергетический сосуд).': '<b>Jewelry</b> — gives no physical defense but boosts stats (an energy vessel).',
+    'Уголь при ковке повышает качество (прочность/урон/защиту).': 'Charcoal during forging improves quality (durability/damage/defense).',
+    '<b>Рарность.</b> Снаряжение бывает разной редкости — она множит характеристики предмета. Чем выше уровень героя и сложность похода, тем больше шанс высокой рарности (на 200% выпадают самые редкие).': "<b>Rarity.</b> Gear comes in different rarities — rarity multiplies an item's stats. The higher the hero's level and expedition difficulty, the greater the chance of high rarity (the rarest drop at 200%).",
+    '<b>Классовые сеты.</b> 7 комплектов по классам, каждый из 5 предметов. Части одного сета выпадают по отдельности и могут быть разной рарности.': '<b>Class sets.</b> 7 sets by class, each of 5 items. Parts of a set drop separately and can be of different rarity.',
+    '<b>Сет-бонусы.</b> За надетые части одного комплекта (2 / 4 / полный) даются бонусы к статам и боевым параметрам — независимо от рарности частей. Прогресс виден в Покоях героя и в разделе «Коллекция» (Кодекс).': "<b>Set bonuses.</b> Equipping parts of one set (2 / 4 / full) grants bonuses to stats and combat parameters — regardless of the parts' rarity. Progress is shown in the Hero's Chambers and in the «Collection» section (Codex).",
+    '<b>Кузница сетов</b> (в Мастерских): найдя хотя бы одну часть сета, можно сковать остальные его части за ресурсы, а также перековать предмет на более высокую рарность за ресурсы и Души.': '<b>Set forge</b> (in Workshops): once you have at least one part of a set, you can forge its remaining parts for resources, and also reforge an item to a higher rarity for resources and Souls.',
+    '<b>Сборки экипировки</b> (в Покоях героя): сохрани текущий комплект под именем и переключайся между сборками одним кликом — удобно держать, например, отдельные комплекты мага и воина.': "<b>Loadouts</b> (in the Hero's Chambers): save your current set under a name and switch between loadouts with one click — handy for keeping, say, separate mage and warrior kits.",
+    'Через «Лестницу в Небо» можно отправиться в один из 12 миров. У каждой локации — свои мобы и уровень сложности (75% — мобы слабее на 25%, 200% — вдвое сильнее).': 'Through the «Stairway to Heaven» you can set out into one of 12 worlds. Each location has its own mobs and difficulty level (75% — mobs are 25% weaker, 200% — twice as strong).',
+    'Награда за победу: опыт, золото, искры, ресурсы-трофеи и иногда формулы заклинаний.': 'Reward for victory: experience, gold, sparks, loot resources and sometimes spell formulas.',
+    'Каждому мобу присваиваются свои параметры — даже одинаковые по названию твари из разных миров отличаются. Боссы (помечены ⭐) крупнее и дают лучший лут.': 'Each mob is assigned its own parameters — even same-named creatures from different worlds differ. Bosses (marked ⭐) are larger and give better loot.',
+    'Задания берутся в Совете старейшин. У многих есть «градиент» — они повторяются с растущей целью (например, убить 10 / 100 / 1000 мобов). За каждый этап — награда.': 'Quests are taken at the Council of Elders. Many have a «gradient» — they repeat with a growing goal (e.g., kill 10 / 100 / 1000 mobs). Each stage gives a reward.',
+    'В Банке можно обменять Души (премиум-валюту) на Золото или Искры.': 'At the Bank you can exchange Souls (premium currency) for Gold or Sparks.',
+    'По задумке GDD монетизация — это премиум-аккаунт, благословения, артефакты, кланы/семьи, барахолка, налоги и комиссии, а главная фишка — свободный ввод и вывод средств. В прототипе из этого реализован обмен Душ; остальное — на будущее.': 'Per the GDD, monetization means a premium account, blessings, artifacts, clans/families, the marketplace, taxes and fees, with the key feature being free deposit and withdrawal of funds. In the prototype only the Soul exchange is implemented; the rest is for the future.',
+
+    // --- Покои/экипировка/сеты/лестница (довод) ---
+    'Оружие': 'Weapon', 'Шлем': 'Helmet', 'Доспех': 'Armor', 'Щит': 'Shield', 'Кольцо': 'Ring', 'Амулет': 'Amulet', 'Серьги': 'Earrings',
+    'Доспехи': 'Armor', 'Бижутерия': 'Jewelry', 'Расходники': 'Consumables',
+    'Усилители (огранка)': 'Enhancers (cutting)', 'Коллекция': 'Collection', 'Коллекция сетов': 'Set collection',
+    'мобов': 'mobs', 'предм.': 'items', 'полный': 'full', 'с мира': 'from world', 'макс.': 'max', 'слот:': 'slot:',
+    '⛏️ Добыча': '⛏️ Gathering', '🔧 Производство': '🔧 Production', 'осталось': 'left', 'из': 'of', 'сброс через': 'reset in', 'мин': 'min',
+    'название (напр. Воин)': 'name (e.g. Warrior)', 'Сохранить текущую': 'Save current',
+    'зачистить мир «{w}» (победить всех его мобов)': 'clear the world «{w}» (defeat all its mobs)',
+    'Огранка усилителей: 💎 камень + 🔥 искры. Готовый камень вставляется в гнездо снаряжения (гнёзда сверлятся за 🔥, число — по рарности).': 'Cutting enhancers: 💎 gem + 🔥 sparks. The finished stone is inserted into an equipment socket (sockets are drilled for 🔥, the number depends on rarity).',
+    '✓ зачищен · ⚔️ доступен · 🔒 закрыт. Миры открываются по уровню и только после зачистки предыдущего. Сложность 75% — мобы слабее, 200% — вдвое сильнее.': '✓ cleared · ⚔️ available · 🔒 locked. Worlds unlock by level and only after clearing the previous one. Difficulty 75% — mobs are weaker, 200% — twice as strong.',
+    // сет-бонусы
+    '+10% уклонение, +4 Ловкости': '+10% dodge, +4 Agility',
+    '+10% урон в дальнем бою': '+10% ranged damage',
+    '+10% физ. крит': '+10% phys. crit',
+    '+12 брони, +4 Выносливости': '+12 armor, +4 Endurance',
+    '+12% маг. крит': '+12% magic crit',
+    '+12% сила заклинаний': '+12% spell power',
+    '+12% урон и +8% физ. крит': '+12% damage and +8% phys. crit',
+    '+12% шанс макс. урона, +4 Ярости': '+12% max damage chance, +4 Fury',
+    '+15% урон и +8 реген HP (исцеление аурой)': '+15% damage and +8 HP regen (aura healing)',
+    '+15% физ. и маг. контрудар': '+15% phys. and magic counter',
+    '+15% физ. крит и +10% макс. урон': '+15% phys. crit and +10% max damage',
+    '+16 брони, +4 Реакции': '+16 armor, +4 Reaction',
+    '+18% сила заклинаний и +60 макс. маны': '+18% spell power and +60 max mana',
+    '+22% урон, но −8 брони (риск/награда)': '+22% damage, but −8 armor (risk/reward)',
+    '+6 реген маны, +4 Интеллект': '+6 mana regen, +4 Intellect',
+    '+8% уклонение, +4 Ловкости': '+8% dodge, +4 Agility',
+    '+8% урон в ближнем бою': '+8% melee damage',
+    '+80 HP, +5 Веры, +3 Силы': '+80 HP, +5 Faith, +3 Strength',
+    '+80 макс. HP': '+80 max HP',
+    '+большой шанс ценного трофея и +10% макс. урон': '+high chance of valuable loot and +10% max damage',
+
+    // --- Тела вкладок: заголовки, описания, кнопки (довод 2) ---
+    'тег': 'tag', 'кол-во': 'qty', 'цена 🪙': 'price 🪙', 'сумма 🪙': 'amount 🪙', 'название': 'name',
+    '👻 Души': '👻 Souls', '🗡️ Удар': '🗡️ Strike', '🔒 закрыт': '🔒 locked', '🛡️ Кланы': '🛡️ Clans',
+    '✅ получен': '✅ received', '✅ получено': '✅ received', 'исключить': 'kick', '📥 забрать': '📥 retrieve',
+    'Приглашено': 'Invited', 'Приглашено:': 'Invited:', '🥤 Напёрстки': '🥤 Thimbles', '🐾 приручить': '🐾 tame',
+    '📦 Накоплено:': '📦 Accumulated:', '💀 Поражений:': '💀 Defeats:', '🔨 Мастерские': '🔨 Workshops',
+    '🔑 арендовать': '🔑 rent', '🧝 Покои героя': "🧝 Hero's Chambers", '💰 Казна клана': '💰 Clan treasury',
+    'Твой промокод:': 'Your promo code:', '🪙 · Проиграно:': '🪙 · Lost:', '🔮 Гильдия магов': '🔮 Mage Guild',
+    '🔥 Кузница сетов': '🔥 Set forge', '📜 События клана': '📜 Clan events', '🚪 Покинуть клан': '🚪 Leave clan',
+    'Ускорить за Души': 'Speed up for Souls', '+500 🪙 и +100 🔥': '+500 🪙 and +100 🔥',
+    '🪜 Лестница в Небо': '🪜 Stairway to Heaven', '📜 Совет старейшин': '📜 Council of Elders',
+    'передать лидерство': 'transfer leadership', '🗂️ Коллекция сетов': '🗂️ Set collection',
+    '📦 Мои выставленные': '📦 My listings', '⏳ Загрузка таблицы…': '⏳ Loading table…',
+    '🤖 Тренировочный бой': '🤖 Training fight', '🪙 Выставить ресурсы': '🪙 List resources',
+    '📜 Изучить заклинания': '📜 Learn spells', '1 Душа → 1000 🔥 Искр': '1 Soul → 1000 🔥 Sparks',
+    '(👑 лидер · 🎖 офицер)': '(👑 leader · 🎖 officer)', 'промокод пригласившего': "inviter's promo code",
+    '🪖 Снаряжение за золото': '🪖 Gear for gold', '1 Душа → 1000 🪙 Золота': '1 Soul → 1000 🪙 Gold',
+    'написать сообщение дня…': 'write the message of the day…', '🤝 Реферальная программа': '🤝 Referral program',
+    'Уже кастовали в этот ход': 'Already cast this turn', '📚 Академия — Энциклопедия': '📚 Academy — Encyclopedia',
+    'Введи код друга — получишь': "Enter a friend's code — get", 'Вставить усилитель в гнездо': 'Insert an enhancer into the socket',
+    'Приручить ослабленного зверя': 'Tame a weakened beast', 'Ввести промокод пригласившего': "Enter the inviter's promo code",
+    'На главную — Вавилонская башня': 'To home — Babylon Tower', 'Сменить язык / Switch language': 'Switch language / Сменить язык',
+    'Пока никто не приглашал игроков': 'No one has invited players yet', '🔒 Стройка построек откроется на': '🔒 Building construction unlocks at',
+    '✅ Сегодня получено. Загляни завтра!': '✅ Claimed today. Come back tomorrow!',
+    '✅ Промокод пригласившего уже применён.': "✅ The inviter's promo code is already applied.",
+    '. Только один раз, в течение 7 дней с создания героя.': '. Only once, within 7 days of creating the hero.',
+    'Приглашай друзей промокодом — за каждого нового игрока': 'Invite friends with a promo code — for each new player',
+    '🔎 Поиск по энциклопедии (статы, топливо, заклинания…)': '🔎 Search the encyclopedia (stats, fuel, spells…)',
+    '⌛ Окно ввода промокода (7 дней с создания героя) истекло.': '⌛ The promo code window (7 days since hero creation) has expired.',
+    'Нет сохранённых сборок. Оденься как нужно и сохрани комплект.': 'No saved loadouts. Equip as needed and save a set.',
+    'Гнёзда для усилителей-самоцветов (создаются огранкой камней 💎)': 'Sockets for gem enhancers (created by cutting gems 💎)',
+    'Нет частей сетов в рюкзаке. Надетые сначала снимите в Покоях героя.': "No set parts in the backpack. Unequip worn ones in the Hero's Chambers first.",
+    'Души — премиум-валюта (реальные средства по GDD). Здесь их можно обменять.': 'Souls are premium currency (real funds per the GDD). Here you can exchange them.',
+    'Твои 2 кубика против заведения. Больше — выигрыш ×2, ничья — возврат ставки.': 'Your 2 dice against the house. Higher — ×2 win, a draw returns the bet.',
+    'Кланы доступны только в Telegram (нужен облачный аккаунт). Открой игру через бота.': 'Clans are available only in Telegram (a cloud account is required). Open the game via the bot.',
+    'Ответы на вопросы об устройстве мира и механиках. Найдите тему или раскройте раздел.': 'Answers about the world and its mechanics. Find a topic or expand a section.',
+    'Алхимия: эликсиры (лечат в бою), зелья (бросаются во врага), мази (усиления вне боя).': 'Alchemy: elixirs (heal in combat), potions (thrown at enemies), balms (buffs outside combat).',
+    'Хлеба и зрелищ! Азартные игры на золото. Дом всегда немного в выигрыше — играй с умом.': 'Bread and circuses! Gambling for gold. The house always has a slight edge — play wisely.',
+    'Скуй недостающие части найденных комплектов и перековывай их на более высокую рарность.': 'Forge the missing parts of found sets and reforge them to higher rarity.',
+    'Купить ресурсы, снаряжение и расходники, продать трофеи. Цены продажи — половина закупки.': 'Buy resources, gear and consumables, sell loot. Sale prices are half of purchase.',
+    'Собери предметы одного класса (напр. «Звёздный аркан») — за надетые части дают сет-бонусы.': 'Collect items of one class (e.g. «Star Arcanum») — worn parts grant set bonuses.',
+    'Найди в походах хотя бы одну часть любого сета — и сможешь сковать остальные его части здесь.': 'Find at least one part of any set on expeditions — then you can forge its remaining parts here.',
+    'Мастерство повышает качество изделий и открывает «тайные знания» — новые рецепты в мастерских.': 'Mastery improves item quality and unlocks «secret knowledge» — new recipes in workshops.',
+    'Журнал заданий. Многие квесты имеют «градиент» — повторяются с растущей целью (10 / 100 / 1000).': 'Quest log. Many quests have a «gradient» — they repeat with a growing goal (10 / 100 / 1000).',
+    'Торговля между полубогами. Комиссия с продажи — 1%. Выручка приходит при следующей синхронизации.': 'Trading between demigods. Sale fee — 1%. Earnings arrive on the next sync.',
+    'Торговля между игроками доступна только в Telegram (нужен облачный аккаунт). Открой игру через бота.': 'Player trading is available only in Telegram (a cloud account is required). Open the game via the bot.',
+    'Спустись к смертным и собери ресурсы 1 уровня сам — бесплатно, удача и навык дают шанс добыть больше.': 'Descend to the mortals and gather tier-1 resources yourself — free; luck and skill give a chance for more.',
+    'Переработка ресурсов 1→2 уровня и создание снаряжения. Уголь как топливо повышает качество (закалка).': 'Processing tier 1→2 resources and crafting gear. Charcoal as fuel improves quality (tempering).',
+    'Готовое снаряжение без крафта — оденься хоть сейчас. Легендарки тут не продаются (их крафтят/добывают).': "Ready-made gear without crafting — equip right away. Legendaries aren't sold here (they're crafted/looted).",
+    '. Части падают в походах — рарность тем выше, чем выше уровень героя и сложность (на 200% — самые редкие).': ". Parts drop on expeditions — the higher the hero's level and difficulty, the higher the rarity (rarest at 200%).",
+    'Пустое гнездо. Сначала создай усилитель в «💎 Усилители (огранка)» (Покои → Экипировка), затем вставь его сюда.': 'Empty socket. First create an enhancer in «💎 Enhancers (cutting)» (Chambers → Equipment), then insert it here.',
+    'Заходи каждый день за наградой (стрик повышает её на 7-й день) и выполняй ежедневные задания. Сброс — каждый день.': 'Come back daily for a reward (the streak boosts it on day 7) and complete daily quests. Resets every day.',
+    'Души выдаются за ключевые квесты. В полной версии — пополняются за реальные деньги с возможностью вывода (см. бизнес-план GDD).': 'Souls are granted for key quests. In the full version they are topped up with real money and can be withdrawn (see the GDD business plan).',
+    'Вступи в клан или основай свой. Чем больше клан — тем выше пассивный бонус всем участникам (+1 к статам за каждые 3 бойца, до +4).': 'Join a clan or found your own. The bigger the clan, the higher the passive bonus for all members (+1 to stats per 3 fighters, up to +4).',
+    'Одолжи экипировку клану (📦 в инвентаре) или арендуй чужую. Арендованное можно только носить — владелец вправе забрать в любой момент.': "Lend gear to the clan (📦 in the backpack) or rent others'. Rented items can only be worn — the owner may reclaim them at any time.",
+    'Питомцев нет. Ослабь зверя (не босса) в бою примерно до 35% HP и нажми «🐾 приручить». Навык Приручение повышает шанс поимки и число активных питомцев (по +1 за 5 уровней, до 3).': 'No pets. Weaken a beast (not a boss) in combat to about 35% HP and tap «🐾 tame». The Taming skill increases the catch chance and the number of active pets (+1 per 5 levels, up to 3).',
+
+    // --- Питомцы, длительность, рейд (довод 4) ---
+    'Рюкзак': 'Backpack', 'Питомцы': 'Pets', 'всего:': 'total:', 'в резерве': 'in reserve', '✅ в строю': '✅ in party',
+    'Активные бьют раз в раунд по цели.': 'Active ones strike once per round at the target.',
+    'д': 'd', 'м': 'm', 'с': 's',
+    '⚔️ В бой с боссом': '⚔️ Fight the boss', 'Забери награду: Кланы → Рейд.': 'Claim your reward: Clans → Raid.',
+
+    // --- Подтабы, Гильдия, кланы, daily (довод 3) ---
+    'Квесты': 'Quests', 'Зал славы': 'Hall of Fame', 'Обзор': 'Overview', 'Арсенал': 'Armory',
+    'Улучшения': 'Upgrades', 'Чат': 'Chat', 'Журнал': 'Log', 'Рейд': 'Raid',
+    'Купить вещи': 'Buy items', 'Продать вещи': 'Sell items', 'Купить ресурсы': 'Buy resources', 'Продать ресурсы': 'Sell resources',
+    'максимальный ранг': 'maximum rank', 'до ранга «{r}»: {n}': 'to rank «{r}»: {n}',
+    'Сообщение дня': 'Message of the day', '🔒 закрыть приём': '🔒 close intake', '🔓 открыть приём': '🔓 open intake',
+    'ко всем статам': 'to all stats', 'за состав': 'for size', 'Артефакт': 'Artifact', 'бонус:': 'bonus:',
+    'только что': 'just now', '{n}м назад': '{n}m ago', '{n}ч назад': '{n}h ago', '{n}д назад': '{n}d ago',
+
+    // --- Мастерские (ws-бейдж), рецепты, магазин, pvp ---
+    'Кузница': 'Smithy', 'Столярная': 'Carpentry', 'Кожевня': 'Tannery', 'Ткацкая': 'Loom',
+    'Плавильня': 'Smeltery', 'Ювелирная': 'Jewelry', 'Лаборатория': 'Laboratory',
+    'усиление:': 'buff:', 'откроется:': 'unlocks:', 'шт.': 'pc', '💀 Поражение': '💀 Defeat',
+    'Раунд {r}: ты {dmg} урона → HP врага {hp}': 'Round {r}: you {dmg} dmg → enemy HP {hp}',
+    '{opp} {dmg} урона → твой HP {hp}': '{opp} {dmg} dmg → your HP {hp}',
+    'Бойцы рядом с тобой по силе. Бой авто-расчётный — победа даёт золото и опыт. Награда — за первые 25 боёв в день.': 'Fighters near your power level. Combat is auto-resolved — a win gives gold and experience. Reward is for the first 25 fights a day.',
+    'Возводи постройки (это занимает время — чем выше уровень, тем дольше) и собирай урожай. Город — стержень: его уровень задаёт потолок остальных построек, бустит шахты и расширяет склад. Строится одно здание за раз; можно ускорить за Души.': 'Erect buildings (this takes time — the higher the level, the longer) and collect the harvest. The City is the core: its level caps the other buildings, boosts mines and expands storage. One building is built at a time; you can speed it up for Souls.',
+    'урона.': 'damage.', '🐉 Босс повержен!': '🐉 Boss defeated!', 'Босс ещё жив — продолжите всем кланом.': 'The boss is still alive — continue with the whole clan.',
+    'урона · полноценный бой без лимита урона: бей сколько выдержишь. Перезарядка 10 мин — только если отступил/пал (босс выжил); убил — сразу следующий.': 'damage · a full fight with no damage cap: hit as much as you can. 10-min cooldown only if you retreated/fell (boss survived); on a kill — straight to the next.',
+
+    // --- Прочие заголовки ---
+    '⬆️ Улучшение заклинаний (до +{cap} на ранге)': '⬆️ Spell upgrades (up to +{cap} at your rank)',
+    '🐉 Рейд': '🐉 Raid', '🏆 Победа!': '🏆 Victory!', '☠️ Поражение': '☠️ Defeat',
+
+    // --- Нижний мир: постройки ---
+    'к шахтам': 'to mines', 'лимит склада': 'storage limit', 'ч': 'h', 'построить': 'build', 'Постройки смертных': 'Mortal buildings',
+    'Подати с горожан. Каждый уровень +5% к добыче всех шахт.': 'Taxes from citizens. Each level +5% to all mine output.',
+    'Смертные валят лес — бревно.': 'Mortals fell timber — logs.',
+    'Добыча камня.': 'Stone mining.', 'Добыча руды.': 'Ore mining.', 'Лён и волокно.': 'Flax and fiber.',
+    '🔒 Стройка построек откроется на <b>{n}</b> уровне героя (сейчас {have}). Пока добывай ресурсы руками ниже.': '🔒 Building construction unlocks at hero level <b>{n}</b> (currently {have}). For now, gather resources by hand below.',
+    'достичь <b>{n}</b> ур. (у вас {have})': 'reach level <b>{n}</b> (you have {have})',
+
+    // --- Чат ---
+    '💬 Чат мира': '💬 World Chat', 'сообщение…': 'message…', 'сообщение клану…': 'message to clan…',
+    'Чат доступен только в Telegram (нужен облачный аккаунт). Открой игру через бота.': 'Chat is available only in Telegram (a cloud account is required). Open the game via the bot.',
+    'Глобальный': 'Global',
+    '🚫 Мат запрещён. Чат заблокирован на {n} мин ({s}/3).': '🚫 Profanity is banned. Chat blocked for {n} min ({s}/3).',
+    '🚫 Вы заблокированы в чате ещё на {n} мин.': '🚫 You are blocked in chat for another {n} min.',
+    '🚫 Вы навсегда заблокированы в чате за нарушения.': '🚫 You are permanently banned from chat for violations.',
+
+    // --- Энциклопедия: новые разделы (питомцы, усилители, профессии, арена, кланы, рейд, чаты, барахолка) ---
+    'Питомцы (Приручение)': 'Pets (Taming)',
+    'Усилители и огранка самоцветов': 'Enhancers and gem cutting',
+    'Профессии и мастерство': 'Professions and mastery',
+    'Арена (тренировка)': 'Arena (training)',
+    'Клановый рейд и арсенал': 'Clan raid and armory',
+    'Чаты (мир и клан)': 'Chats (world and clan)',
+    'Барахолка (торговля между игроками)': 'Marketplace (player trading)',
+    'Ослабь дикого зверя (не босса) в бою примерно до 35% HP и нажми «🐾 приручить» — прирученный питомец будет помогать тебе в бою.': 'Weaken a wild beast (not a boss) in combat to about 35% HP and tap «🐾 tame» — a tamed pet will help you in battle.',
+    'Навык <b>Приручение</b> повышает шанс поимки и число активных питомцев — по +1 за каждые 5 уровней навыка, максимум 3. Питомцы видны в Покоях героя на вкладке «Питомцы».': "The <b>Taming</b> skill raises the catch chance and the number of active pets — +1 for every 5 skill levels, up to 3. Pets are shown in the Hero's Chambers on the «Pets» tab.",
+    'Из самоцветов (💎) огранкой создаются <b>усилители</b> — каждый даёт прибавку к одному стату. Огранка доступна в Покоях героя → Экипировка → блок «💎 Усилители (огранка)».': "Gems (💎) are cut into <b>enhancers</b> — each grants a bonus to one stat. Cutting is available in the Hero's Chambers → Equipment → the «💎 Enhancers (cutting)» block.",
+    'Снаряжение с гнёздами (💠) принимает усилители: вставь самоцвет в гнездо, чтобы добавить статов; усилитель можно вынуть обратно. Чем мощнее огранка, тем выше бонус и больше расход искр.': 'Gear with sockets (💠) accepts enhancers: insert a gem into a socket to add stats; an enhancer can be taken back out. The stronger the cut, the higher the bonus and the more sparks it costs.',
+    'У ремёсел есть уровни мастерства (Столяр, Кузнец, Алхимик и другие). Мастерство растёт от создания вещей и повышает их качество.': 'Crafts have mastery levels (Carpenter, Blacksmith, Alchemist and others). Mastery grows from creating items and raises their quality.',
+    'Рост уровня профессии открывает «тайные знания» — новые рецепты в мастерских и лабораториях. Текущие уровни видны в разделе «Профессии».': 'Leveling up a profession unlocks «secret knowledge» — new recipes in workshops and laboratories. Current levels are shown in the «Professions» section.',
+    'Клуб магов: вступление за разовый взнос. <b>Ранг</b> растёт с суммой уровней стихий (пороги 20 / 60 / 120).': 'A club of mages: join for a one-time fee. <b>Rank</b> grows with the sum of your element levels (thresholds 20 / 60 / 120).',
+    'В гильдии можно <b>улучшать</b> известные заклинания (до предела по рангу, +N к силе) за золото, искры и самоцветы, а также <b>изучать</b> новые заклинания, открытые по рангу.': 'In the guild you can <b>upgrade</b> known spells (up to the rank cap, +N power) for gold, sparks and gems, and <b>learn</b> new spells unlocked by rank.',
+    'На Арене можно сразиться с тёмным двойником ради опыта и золота — без риска потерять вещи. Сила двойника зависит от твоей «опасности».': "In the Arena you can fight a dark twin for experience and gold — with no risk of losing items. The twin's power depends on your «danger».",
+    'Награда даётся за первые 25 боёв в день; сверх лимита бой засчитывается, но без золота и опыта.': 'The reward is granted for the first 25 fights per day; beyond the limit the fight counts but gives no gold or experience.',
+    'Клан — объединение до 20 игроков. Можно создать свой клан или вступить в открытый. У клана есть казна, улучшения, состав, журнал событий, чат и совместный рейд.': 'A clan is a group of up to 20 players. You can create your own clan or join an open one. A clan has a treasury, upgrades, a roster, an event log, a chat and a shared raid.',
+    'Казна (🪙) пополняется взносами участников и наградами рейда; из неё лидер оплачивает улучшения клана:': 'The treasury (🪙) is filled by member donations and raid rewards; the leader spends it on clan upgrades:',
+    '<b>Бонус клана</b> даёт всем участникам прибавку ко всем статам: +1 за размер состава и ещё +1 за каждый уровень «Артефакта клана».': '<b>Clan bonus</b> grants every member a bonus to all stats: +1 for the roster size and +1 more for each level of the «Clan Artifact».',
+    '<b>Рейд</b> — общий босс клана с единым пулом HP. Это полноценный интерактивный бой: бей босса сколько выдержишь за заход, нанесённый урон вычитается из общего пула.': '<b>Raid</b> is a shared clan boss with a single HP pool. It is a full interactive fight: hit the boss as long as you can hold out per run, and the damage dealt is subtracted from the shared pool.',
+    'Перезарядка 10 минут включается только если ты отступил или пал (босс выжил). Убил — сразу можно идти на следующего, более крепкого. После убийства награда (золото, искры, опыт) начисляется всем участникам и забирается в разделе «Рейд».': 'A 10-minute cooldown kicks in only if you retreat or fall (the boss survived). If you kill it — you can go straight to the next, tougher one. After a kill the reward (gold, sparks, experience) is granted to all members and collected in the «Raid» section.',
+    '<b>Арсенал</b> — клановый прокат снаряжения. Одолжи свою вещь клану (📦 в инвентаре) или арендуй чужую. Арендованное можно только носить — владелец вправе забрать его в любой момент.': "<b>Armory</b> is the clan's gear rental. Lend your item to the clan (📦 in the inventory) or rent someone else's. Rented gear can only be worn — the owner may reclaim it at any moment.",
+    'Чат мира — общий живой чат всех игроков. Вкладки: 🌐 «Глобальный» и по флажку на каждый язык; вкладка просто выбирает комнату, язык сообщений не проверяется. У клана есть отдельный чат.': 'World chat is a shared live chat for all players. Tabs: 🌐 «Global» and one flag per language; a tab simply picks a room, the message language is not checked. A clan has its own separate chat.',
+    '<b>Модерация.</b> Мат запрещён: за нарушение — блокировка чата на час, после трёх нарушений — навсегда. Бан общий для мирового и кланового чатов.': '<b>Moderation.</b> Profanity is banned: a violation blocks chat for an hour, and after three violations — permanently. The ban is shared between world and clan chats.',
+    'На Барахолке игроки продают друг другу вещи за золото: выставляй свои предметы на продажу или покупай чужие.': "On the Marketplace players sell items to each other for gold: list your own items for sale or buy others'.",
+    'Лимит — 12 активных лотов на игрока, лот живёт 30 дней. С продажи удерживается комиссия 1%, остальное приходит продавцу.': 'The limit is 12 active lots per player, and a lot lives for 30 days. A 1% commission is withheld from a sale, the rest goes to the seller.',
+
+    // --- Кузница: табы ---
+    'Скуй недостающие части найденных комплектов.': 'Forge the missing parts of the sets you have found.',
+    'Перековка сохраняет заточку и камни, но по Душам дороже прямой покупки — целую вещь нужной рарности выгоднее купить в Магазине.': 'Reforging keeps the enchant and gems, but costs more Souls than buying directly — it is cheaper to buy a whole item of the needed rarity in the Shop.',
+
+    // --- Энциклопедия: монетизация (обновлено) ---
+    '👻 <b>Души</b> — премиум-валюта: покупаются за Telegram Stars (⭐) или выдаются за ключевые квесты. Меняются в Банке на Золото и Искры.': '👻 <b>Souls</b> — premium currency: bought with Telegram Stars (⭐) or awarded for key quests. Exchanged at the Bank for Gold and Sparks.',
+    'Монетизация: паки Душ за Telegram Stars, премиум-предметы и сеты за Души в Магазине, премиум-аккаунт (за Stars или Души) и комиссия барахолки. Вывод дохода — на стороне владельца (Stars → TON через Fragment).': 'Monetization: Soul packs for Telegram Stars, premium items and sets for Souls in the Shop, a premium account (for Stars or Souls), and a marketplace commission. Revenue payout is on the owner side (Stars → TON via Fragment).',
+
+    // --- Барахолка за души (Фаза 4) ---
+    'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': 'The marketplace has two tabs: “For coins” (ordinary items and resources) and “For souls” (set items). For souls the commission is higher — 10%.',
+    'За монеты': 'For coins',
+    'цена': 'price',
+    'В рюкзаке нет сетовых вещей этой категории.': 'No set items of this category in the backpack.',
+    'За души продаются сетовые вещи. Комиссия — 10% (сжигается). Выручка приходит при следующей синхронизации.': 'Set items are sold for Souls. Commission is 10% (burned). Proceeds arrive on the next sync.',
+    '🏷️ Лот выставлен: «{item}» за {price} {icon}.': '🏷️ Lot listed: “{item}” for {price} {icon}.',
+    '🛍️ Куплено: {qty}× {res} за {price} {icon}.': '🛍️ Bought: {qty}× {res} for {price} {icon}.',
+    '🛍️ Куплено: «{item}» за {price} {icon}.': '🛍️ Bought: “{item}” for {price} {icon}.',
+    '💰 Выручка с барахолки: +{n} 👻': '💰 Marketplace proceeds: +{n} 👻',
+    '💰 +{n} 👻 за проданные лоты!': '💰 +{n} 👻 for sold lots!',
+    '↩️ С барахолки вернулись вещи: {n}': '↩️ Items returned from the marketplace: {n}',
+    '↩️ С барахолки вернулось вещей: {n}': '↩️ Items returned from the marketplace: {n}',
+
+    // --- Премиум-аккаунт ---
+    'Премиум-аккаунт': 'Premium account',
+    'Премиум активен до': 'Premium active until',
+    'Премиум не активен': 'Premium not active',
+    'Арена: {n} боёв с наградой в день': 'Arena: {n} rewarded fights per day',
+    'Сборки экипировки: до {n}': 'Gear loadouts: up to {n}',
+    'Значок 👑 в чате и рейтинге': '👑 badge in chat and ranking',
+    '{d} дней за {s} ⭐': '{d} days for {s} ⭐',
+    '{d} дней за {s} 👻': '{d} days for {s} 👻',
+    '👑 Премиум-аккаунт активирован!': '👑 Premium account activated!',
+    '<b>Премиум-аккаунт</b> (в Банке): за Stars или Души на 30 дней. Даёт удобства, а не боевое преимущество: больше боёв на Арене с наградой в день, больше слотов под сборки экипировки и значок 👑 в чате и рейтинге.': '<b>Premium account</b> (at the Bank): for Stars or Souls for 30 days. It gives convenience, not a combat advantage: more rewarded Arena fights per day, more gear-loadout slots, and a 👑 badge in chat and the ranking.',
+
+    // --- Премиум-лавка: сетовые предметы за души ---
+    'За ресурсы': 'For resources',
+    'За души': 'For souls',
+    'Весь сет': 'Whole set',
+    'Готовые сетовые предметы за Души. Комплектом — дешевле.': 'Ready-made set items for Souls. Cheaper as a full set.',
+    '👻 Недостаточно Душ для покупки.': '👻 Not enough Souls for the purchase.',
+    '🛒 Куплено: {item} за {souls} 👻.': '🛒 Purchased: {item} for {souls} 👻.',
+    '🛒 Куплен сет «{set}» за {souls} 👻.': '🛒 Set “{set}” purchased for {souls} 👻.',
+    '<b>Премиум-лавка</b> (Магазин → вкладка «За души»): готовые сетовые предметы можно купить за Души — по частям или целым комплектом (сетом дешевле). Рарность выбирается вкладкой.': '<b>Premium store</b> (Shop → “For souls” tab): ready-made set items can be bought for Souls — piece by piece or as a whole set (cheaper as a set). Rarity is chosen with a tab.',
+
+    // --- Монетизация: покупка душ за Stars ---
+    'Купить души': 'Buy souls',
+    'Оплата звёздами Telegram — души зачислятся автоматически.': 'Pay with Telegram Stars — souls are credited automatically.',
+    'Покупки доступны только в Telegram.': 'Purchases are available only in Telegram.',
+    'Обновите Telegram для оплаты.': 'Update Telegram to pay.',
+    'Не удалось создать счёт.': 'Could not create the invoice.',
+    'Оплата прошла! Зачисляем души…': 'Payment received! Crediting souls…',
+    'Оплата прошла! Души зачислятся в течение 1–2 минут.': 'Payment received! Souls will be credited within 1–2 minutes.',
+    'Платёж не прошёл.': 'Payment failed.',
+    'Начислено {n} 👻': '{n} 👻 credited',
+    'Души выдаются за ключевые квесты или покупаются за Telegram Stars (⭐).': 'Souls are awarded for key quests or bought with Telegram Stars (⭐).',
+    'Души можно купить за Telegram Stars (⭐) прямо в Банке — это премиум-валюта, на которую затем берут премиум-предметы и услуги. Оплата проходит через Telegram, души зачисляются автоматически.': 'Souls can be bought with Telegram Stars (⭐) right in the Bank — a premium currency later spent on premium items and services. Payment goes through Telegram, and souls are credited automatically.',
+
+    // --- Интерполированные подписи/кнопки ---
+    'Вступить за': 'Join for', 'Купить билет': 'Buy ticket', 'Кланы': 'Clans', 'Награда за этап:': 'Stage reward:',
+    'Награда:': 'Reward:', 'Направления:': 'Directions:', 'Стихии:': 'Elements:', 'Трофеи:': 'Loot:',
+    'Уровень': 'Level', 'Опасность': 'Danger', 'опасн.': 'dgr', 'изучить': 'learn', 'копится…': 'accruing…',
+    'в час': 'per hour', 'сложность': 'difficulty', 'создать за': 'create for', 'ставка': 'bet', 'тир': 'tier',
+    'Вещь:': 'Item:', 'одеть лучшее': 'equip best', 'Достижения': 'Achievements', 'Схема снаряжения:': 'Gear schematic:',
+    'Формула заклинания:': 'Spell formula:', 'Заявки': 'Applications', 'топливо:': 'fuel:', 'уголь': 'coal',
+    'или': 'or', 'бревно': 'log', 'не хватает:': 'missing:', 'строится': 'building', 'Опыт:': 'XP:', 'Золото:': 'Gold:',
+    'Искры:': 'Sparks:', 'день': 'day', 'подряд': 'in a row', 'Мир закрыт. Нужно:': 'World locked. Required:',
+    'Состав': 'Members', 'есть': 'have', 'и': 'and',
+
+    // --- Зоны удара ---
+    'голова': 'head', 'торс': 'torso', 'левая рука': 'left arm', 'правая рука': 'right arm', 'ноги': 'legs',
+    'сек': 'sec', 'раунд': 'round', 'эффекты:': 'effects:',
+
+    // --- Боевой лог (шаблоны с {плейсхолдерами}) ---
+    '⚔️ Бой начался: {mobs}': '⚔️ Battle started: {mobs}',
+    '⏰ Время хода истекло! Враги атакуют.': '⏰ Turn time is up! Enemies attack.',
+    '🌀 {name} уклонился от удара (в {zone}).': '🌀 {name} dodged the attack (at {zone}).',
+    '🗡️ Удар по «{name}» в {zone}: −{dmg} HP{crit}{max}.': '🗡️ Hit on «{name}» at {zone}: −{dmg} HP{crit}{max}.',
+    '💀 «{name}» повержен!': '💀 «{name}» defeated!',
+    '🧙 Уже применили заклинание в этот ход.': '🧙 You already cast a spell this turn.',
+    '💧 Недостаточно маны.': '💧 Not enough mana.',
+    '💚 {spell}: +{h} HP{crit}.': '💚 {spell}: +{h} HP{crit}.',
+    '✨ {spell} по «{name}»: −{dmg} HP{crit}.': '✨ {spell} on «{name}»: −{dmg} HP{crit}.',
+    '💀 «{name}» повержен магией!': '💀 «{name}» defeated by magic!',
+    '💥 {name}: −{dmg} HP.': '💥 {name}: −{dmg} HP.',
+    '☠️ «{name}» отравлен.': '☠️ «{name}» is poisoned.',
+    '🛡️ {spell}: +{v} защиты на {r} р.': '🛡️ {spell}: +{v} defense for {r} r.',
+    '📉 У «{name}» −{v} защиты.': '📉 «{name}»: −{v} defense.',
+    '🕳️ «{name}» в яме — пропустит ход.': '🕳️ «{name}» falls into a pit — will skip a turn.',
+    '«Яма» не сработала.': '«Pit» did not work.',
+    '🧪 Эффекты яда сняты.': '🧪 Poison effects removed.',
+    '🌬️ Щиты и бури сдуты.': '🌬️ Shields and storms blown away.',
+    '🧴 {item}: +{h} HP.': '🧴 {item}: +{h} HP.',
+    '🧴 {item}: +{m} MP.': '🧴 {item}: +{m} MP.',
+    '🍶 {item} в «{name}»: −{dmg} HP.': '🍶 {item} on «{name}»: −{dmg} HP.',
+    '🧪 {item}: яд нейтрализован.': '🧪 {item}: poison neutralized.',
+    '🧪 {item}: яда не было.': '🧪 {item}: there was no poison.',
+    '🤐 «{name}» онемел — не колдует {r} р.': '🤐 «{name}» is silenced — no casting for {r} r.',
+    '🪨 {item}: +{conc} защиты и маг. сопротивление на {r} р.': '🪨 {item}: +{conc} defense and magic resistance for {r} r.',
+    '🏃 Вы сбежали из боя.': '🏃 You fled the battle.',
+    'Сбежать не удалось!': 'Failed to flee!',
+    '☠️ Яд: «{name}» −{v} HP.': '☠️ Poison: «{name}» −{v} HP.',
+    '☠️ Вы теряете {v} HP от яда.': '☠️ You lose {v} HP to poison.',
+    '🐾 {pet} атакует «{name}»: −{dmg} HP.': '🐾 {pet} attacks «{name}»: −{dmg} HP.',
+    '💀 «{name}» повержен питомцем!': '💀 «{name}» defeated by a pet!',
+    '🐾 Босса не приручить.': '🐾 A boss cannot be tamed.',
+    '🐾 Предел питомцев ({max}).': '🐾 Pet limit ({max}).',
+    '🐾 Вы приручили «{name}»!': '🐾 You tamed «{name}»!',
+    '🐾 «{name}» вырвался — приручение не удалось.': '🐾 «{name}» broke free — taming failed.',
+    '💤 «{name}» пропускает ход.': '💤 «{name}» skips a turn.',
+    '🔮 «{name}» бьёт заклинанием: −{dmg} HP.': '🔮 «{name}» strikes with a spell: −{dmg} HP.',
+    '🔁 Маг. контрудар: −{c} HP по «{name}».': '🔁 Magic counter: −{c} HP on «{name}».',
+    '🛡️ Вы отбили удар «{name}» ({zone}).': "🛡️ You blocked «{name}»'s hit ({zone}).",
+    '🔁 Контрудар: −{c} HP по «{name}».': '🔁 Counter: −{c} HP on «{name}».',
+    '⚔️ Парирование удара «{name}»! Возврат −{refl} HP.': "⚔️ Parried «{name}»'s hit! Reflected −{refl} HP.",
+    '⚡ Враг наносит критический удар!': '⚡ The enemy lands a critical hit!',
+    '🩸 «{name}» бьёт в {zone}: −{dmg} HP{blocked}.': '🩸 «{name}» hits {zone}: −{dmg} HP{blocked}.',
+    '💸 Поражение! Вы обронили {lost} золота и вернулись ослабленным.': '💸 Defeat! You dropped {lost} gold and returned weakened.',
+    '☠️ Поражение! Вы возвращаетесь в башню ослабленным.': '☠️ Defeat! You return to the tower weakened.',
+    '📜 Получена формула заклинания «{spell}»!': '📜 Learned the spell formula «{spell}»!',
+    '📜 Найдена схема «{rec}»!': '📜 Found the schematic «{rec}»!',
+    '🎁 Трофей: {item}!': '🎁 Loot: {item}!',
+    '🎁 Трофей сета «{set}»: {item} [{rar}]!': '🎁 Set loot «{set}»: {item} [{rar}]!',
+    '📜 Схема легендарного предмета «{rec}» получена!': '📜 Schematic of legendary item «{rec}» obtained!',
+
+    // --- Приветствие ---
+    'Добро пожаловать': 'Welcome',
+    'Ты — полубог, пробудившийся в недрах древней башни. Здесь сталкиваются порядок и хаос, боги и смертные.': 'You are a demigod awakened deep within an ancient tower, where order and chaos, gods and mortals collide.',
+    'Исследуй Вавилонскую башню, развивай героя, сражайся с монстрами и отправляйся в экспедиции за трофеями.': 'Explore the Tower of Babylon, grow your hero, fight monsters and venture out on expeditions for loot.',
+    '⚔️ Отправиться в путь!': '⚔️ Set out on your journey!',
+  },
+};
+
+function t(s) {
+  const d = I18N[LANG];
+  if (!d) return s;            // нет словаря для языка (напр. русский-исходник) → оригинал
+  const v = d[s];
+  return (v != null) ? v : s;  // нет перевода ключа → оригинал (русский)
+}
+
+// удобные локализованные имена (рантайм-доступ к данным)
+function rName(k) { return t((typeof RESOURCES !== 'undefined' && RESOURCES[k]) ? RESOURCES[k].name : k); }
+function sName(k) { return t((typeof STATS !== 'undefined' && STATS[k]) ? STATS[k].name : k); }
+// алиас перевода (для мест, где локальная переменная затеняет t)
+function L(s) { return t(s); }
+// перевод шаблона с подстановкой {плейсхолдеров}, возвращает строку
+function tp(template, vars) {
+  let s = t(template);
+  if (vars) s = s.replace(/\{(\w+)\}/g, (mm, k) => (vars[k] != null ? vars[k] : ''));
+  return s;
+}
+
+// Пост-обработка отрендеренного DOM: переводит статичные текстовые узлы и
+// placeholder/title, которые ТОЧНО совпадают со словарём. Динамика (имена,
+// числа, чат) не совпадает с ключами → остаётся как есть.
+function localizeDOM(root) {
+  const d = I18N[LANG];
+  if (!d || !root) return;
+  // перевод ключа: прямое совпадение или «эмодзи/символы + пробел + ключ»
+  const tr = (key) => {
+    if (d[key] != null) return d[key];
+    const m = key.match(/^([^A-Za-zА-Яа-яЁё]+?\s+)([A-Za-zА-Яа-яЁё].*)$/u);
+    if (m && d[m[2]] != null) return m[1] + d[m[2]];
+    return null;
+  };
+  try {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes = []; let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach((node) => {
+      const raw = node.nodeValue; if (!raw) return;
+      const key = raw.trim(); if (!key) return;
+      const v = tr(key);
+      if (v != null && v !== key) node.nodeValue = raw.replace(key, v);
+    });
+    root.querySelectorAll('[placeholder]').forEach((el) => { const v = tr((el.getAttribute('placeholder') || '').trim()); if (v != null) el.setAttribute('placeholder', v); });
+    root.querySelectorAll('[title]').forEach((el) => { const v = tr((el.getAttribute('title') || '').trim()); if (v != null) el.setAttribute('title', v); });
+  } catch (e) {}
+}
+
+// Реестр языков. Чтобы ДОБАВИТЬ язык: 1) создай js/lang/<code>.js c `I18N.<code> = {...}`,
+// 2) подключи его <script> в index.html ПОСЛЕ i18n.js, 3) убедись, что код есть здесь.
+// Порядок строк = порядок кнопок в выборе языка. Русский — исходник (ключи словаря).
+const LANG_META = {
+  ru: { flag: '🇷🇺', name: 'Русский' },
+  en: { flag: '🇬🇧', name: 'English' },
+  de: { flag: '🇩🇪', name: 'Deutsch' },
+  es: { flag: '🇪🇸', name: 'Español' },
+  fr: { flag: '🇫🇷', name: 'Français' },
+  pt: { flag: '🇧🇷', name: 'Português' },
+  tr: { flag: '🇹🇷', name: 'Türkçe' },
+  it: { flag: '🇮🇹', name: 'Italiano' },
+  uk: { flag: '🇺🇦', name: 'Українська' },
+  zh: { flag: '🇨🇳', name: '中文' },
+  ja: { flag: '🇯🇵', name: '日本語' },
+  ko: { flag: '🇰🇷', name: '한국어' },
+  th: { flag: '🇹🇭', name: 'ไทย' },
+};
+// Доступные языки: русский (исходник) всегда + те, для кого ЗАГРУЖЕН словарь.
+function availableLangs() {
+  return Object.keys(LANG_META).filter((c) => c === 'ru' || (I18N[c] && Object.keys(I18N[c]).length));
+}
+function langLabel(code) { const m = LANG_META[code] || {}; return (m.flag ? m.flag + ' ' : '') + (m.name || code); }
+
+function setLang(l) {
+  LANG = l;
+  try { localStorage.setItem('babylon_lang', l); } catch (e) {}
+  try { document.documentElement.lang = l; } catch (e) {}
+}
+
+// Кнопка 🌐: при 2 языках — простое переключение, при 3+ — открыть выбор.
+function toggleLang() {
+  const langs = availableLangs();
+  if (langs.length > 2) { showLangPicker(); return; }
+  const i = Math.max(0, langs.indexOf(LANG || 'ru'));
+  setLang(langs[(i + 1) % langs.length]);
+  if (typeof render === 'function') render();
+}
+
+// Оверлей выбора языка (первый вход / кнопка 🌐 при 3+ языках)
+function showLangPicker(onDone) {
+  if (document.getElementById('lang-overlay')) return;
+  window._pickLangDone = onDone || null;
+  const div = document.createElement('div');
+  div.id = 'lang-overlay';
+  div.className = 'lang-overlay';
+  const btns = availableLangs().map((c) => `<button class="big" onclick="_pickLang('${c}')">${langLabel(c)}</button>`).join('');
+  div.innerHTML = `<div class="lang-box"><div class="lang-title">🌐 Выберите язык<br>Choose language</div>${btns}</div>`;
+  document.body.appendChild(div);
+}
+function _pickLang(l) {
+  setLang(l);
+  const el = document.getElementById('lang-overlay'); if (el) el.remove();
+  if (typeof render === 'function') render();
+  const cb = window._pickLangDone; window._pickLangDone = null; if (cb) cb();
+}
+try { if (LANG) document.documentElement.lang = LANG; } catch (e) {}

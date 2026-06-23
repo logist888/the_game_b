@@ -16,8 +16,13 @@
  *   GET  /admin?key=<ADMIN_KEY>      → список всех игроков (только для админа)
  */
 
-const ALLOWED_ORIGIN = 'https://logist888.github.io';
-const GAME_URL = 'https://logist888.github.io/the_game_b/';
+// Разрешённые источники (origin) для CORS. Прод переехал на Cloudflare Pages.
+const ALLOWED_ORIGINS = [
+  'https://babylon-af9.pages.dev',
+  'https://logist888.github.io',
+];
+const ALLOWED_ORIGIN = 'https://babylon-af9.pages.dev'; // дефолт, если origin не из списка
+const GAME_URL = 'https://babylon-af9.pages.dev/';
 
 // Отправить сообщение пользователю через бот
 async function tgNotify(botToken, botHandle, chatId, html) {
@@ -39,13 +44,69 @@ async function tgNotify(botToken, botHandle, chatId, html) {
   } catch (e) {}
 }
 
+// Вызов Telegram Bot API
+async function tgApi(botToken, method, params) {
+  const r = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return r.json();
+}
+
+// --- Монетизация (Фаза 1): паки душ за Telegram Stars (XTR) ---
+// stars — цена в звёздах, souls — сколько душ начисляем. Сервер — источник истины.
+const SOUL_PACKS = {
+  xs: { stars: 10,   souls: 1,   title: 'Одна душа' },
+  s:  { stars: 60,   souls: 10,  title: 'Горсть душ' },
+  m:  { stars: 300,  souls: 55,  title: 'Мешочек душ' },
+  l:  { stars: 1000, souls: 200, title: 'Сундук душ' },
+  xl: { stars: 2500, souls: 550, title: 'Сокровище душ' },
+};
+
+// Премиум-аккаунт (Фаза 3): цена в звёздах и срок в днях.
+const PREMIUM_ACCOUNT_STARS = 300;
+const PREMIUM_ACCOUNT_DAYS = 30;
+
 function corsHeaders(origin) {
-  const allow = origin === ALLOWED_ORIGIN ? origin : ALLOWED_ORIGIN;
+  // эхо-разрешаем источник из белого списка (и любые превью *.pages.dev этого проекта)
+  const ok = ALLOWED_ORIGINS.includes(origin) || /^https:\/\/[a-z0-9-]+\.babylon-af9\.pages\.dev$/.test(origin);
+  const allow = ok ? origin : ALLOWED_ORIGIN;
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
+}
+
+// --- Модерация чата: фильтр мата (стоп-слова) ---
+// Список комнат мирового чата: «Глобальный» + по одной на каждый язык.
+const CHAT_ROOMS = ['global', 'en', 'ru', 'es', 'de', 'fr', 'pt', 'it', 'zh', 'ja', 'ko', 'th'];
+const CHAT_TEMP_BAN_MS = 60 * 60 * 1000; // час
+// Корни матерных слов (рус + базовый англ). Проверка по нормализованному тексту.
+const PROFANITY_ROOTS = [
+  'хуй', 'хуе', 'хуё', 'хуя', 'пизд', 'ебат', 'ебал', 'ебан', 'ебуч', 'еблан', 'ёбан', 'ёбну', 'ебну',
+  'бляд', 'блят', 'бля', 'сука', 'суки', 'сук', 'мудак', 'муда', 'мудил', 'пидор', 'пидар',
+  'гондон', 'гандон', 'залуп', 'манда', 'дроч', 'выеб', 'наеб', 'отъеб', 'отьеб', 'уеб', 'долбоёб',
+  'долбоеб', 'хер', 'ублюд', 'шлюх', 'проститут', 'fuck', 'shit', 'bitch', 'cunt', 'asshole', 'dick',
+  'pussy', 'faggot', 'nigger', 'whore',
+];
+// Базовая нормализация: нижний регистр, удаление неалфавитных символов (чтобы «х у й» → «хуй»)
+// и схлопывание повторов. Скрипт (латиница/кириллица) сохраняется.
+function _normBase(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^a-zа-яё]+/gi, '')
+    .replace(/(.)\1{2,}/g, '$1$1');
+}
+// Доп. свёртка латинских лук-алайков в кириллицу — ловит обход вида «cyka» → «сука».
+function _foldLookalike(t) {
+  const map = { '0': 'о', '1': 'и', '3': 'е', '4': 'ч', a: 'а', e: 'е', o: 'о', p: 'р', c: 'с', x: 'х', y: 'у', k: 'к', b: 'в', h: 'н', m: 'м', t: 'т' };
+  return t.replace(/[0134aeopcxykbhmt]/g, (ch) => map[ch] || ch);
+}
+function hasProfanity(text) {
+  const base = _normBase(text);          // прямые совпадения в обоих алфавитах (fuck, сука)
+  const folded = _foldLookalike(base);   // обход кириллицы латиницей (cyka → сука)
+  return PROFANITY_ROOTS.some((r) => base.includes(r) || folded.includes(r));
 }
 
 // Верификация initData по алгоритму Telegram WebApp
@@ -116,6 +177,18 @@ export default {
         if (payout) {
           data._pendingMarketGold = payout;
           await env.SAVES.delete(`payout_${userId}`);
+        }
+        // Inject pending souls payout (from lots sold for souls), consume once
+        const spayout = await env.SAVES.get(`soulpayout_${userId}`, 'json');
+        if (spayout) {
+          data._pendingMarketSouls = spayout;
+          await env.SAVES.delete(`soulpayout_${userId}`);
+        }
+        // Inject returned items (e.g. legacy lots pulled from the shelf), consume once
+        const iret = await env.SAVES.get(`itemreturn_${userId}`, 'json');
+        if (iret && iret.length) {
+          data._pendingMarketItems = iret;
+          await env.SAVES.delete(`itemreturn_${userId}`);
         }
       }
       return new Response(JSON.stringify(data || null), {
@@ -349,6 +422,7 @@ export default {
               xp: data.xp || 0,
               kills: data.counters?.kills || 0,
               danger: data.danger || 1,
+              prem: (data.premiumUntil || 0) > Date.now(),
             };
           })
         );
@@ -427,7 +501,25 @@ export default {
 
     // --- GET /market --- все активные лоты (для просмотра и «мои лоты») ---
     if (url.pathname === '/market' && request.method === 'GET') {
-      const lots = await listAllLots();
+      let lots = await listAllLots();
+      // Разовая миграция: сетовые предметы теперь продаются только за Души —
+      // снимаем старые «золотые» лоты сетовых вещей и возвращаем их продавцам.
+      const migrated = await env.SAVES.get('mig_souls_v1');
+      if (!migrated) {
+        const removed = new Set();
+        for (const l of lots) {
+          if (l.kind === 'item' && l.item && l.item.set && l.currency !== 'souls') {
+            await env.SAVES.delete(`market_${l.id}`);
+            const k = `itemreturn_${l.sellerId}`;
+            const arr = (await env.SAVES.get(k, 'json')) || [];
+            arr.push(l.item);
+            await env.SAVES.put(k, JSON.stringify(arr), { expirationTtl: 60 * 60 * 24 * 365 });
+            removed.add(l.id);
+          }
+        }
+        await env.SAVES.put('mig_souls_v1', '1');
+        lots = lots.filter((l) => !removed.has(l.id));
+      }
       lots.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       return new Response(JSON.stringify(lots), {
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' },
@@ -454,10 +546,11 @@ export default {
       const mine = (await listAllLots()).filter((l) => String(l.sellerId) === String(seller.id));
       if (mine.length >= MARKET_MAX_PER_SELLER) return new Response('Too many lots', { status: 429, headers });
 
+      const currency = lot.currency === 'souls' ? 'souls' : 'gold';
       const id = crypto.randomUUID();
       const record = {
         id, sellerId: String(seller.id), sellerName: seller.name,
-        kind: lot.kind, price, createdAt: Date.now(),
+        kind: lot.kind, price, currency, createdAt: Date.now(),
         ...(lot.kind === 'res' ? { res: lot.res, qty: Math.floor(Number(lot.qty)) } : { item: lot.item }),
       };
       await env.SAVES.put(`market_${id}`, JSON.stringify(record), { expirationTtl: MARKET_TTL });
@@ -479,17 +572,20 @@ export default {
       // Снимаем лот первым делом — снижает шанс двойной покупки
       await env.SAVES.delete(key);
 
-      // Выплата продавцу за вычетом 1% комиссии (раздел GDD «Комиссия»)
-      const net = Math.max(1, Math.floor(lot.price * 0.99));
-      const payoutKey = `payout_${lot.sellerId}`;
+      const souls = lot.currency === 'souls';
+      // Выплата продавцу за вычетом комиссии: золото 1%, души 10% (сжигаются).
+      const net = souls ? Math.max(1, Math.floor(lot.price * 0.90)) : Math.max(1, Math.floor(lot.price * 0.99));
+      const payoutKey = souls ? `soulpayout_${lot.sellerId}` : `payout_${lot.sellerId}`;
       const prev = (await env.SAVES.get(payoutKey, 'json')) || 0;
       await env.SAVES.put(payoutKey, JSON.stringify(prev + net), { expirationTtl: 60 * 60 * 24 * 365 });
 
       // Уведомляем продавца в Telegram
       if (env.BOT_TOKEN && env.BOT_HANDLE) {
         const what = lot.kind === 'res' ? `${lot.qty}× ресурса` : `«${lot.item.name}»`;
+        const cur = souls ? `+${net} 👻` : `+${net} 🪙`;
+        const fee = souls ? '10%' : '1%';
         await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, lot.sellerId,
-          `💰 <b>Лот продан!</b>\n${buyer.name} купил ваш лот ${what}.\nВам начислено <b>+${net} 🪙</b> (после комиссии 1%).`);
+          `💰 <b>Лот продан!</b>\n${buyer.name} купил ваш лот ${what}.\nВам начислено <b>${cur}</b> (после комиссии ${fee}).`);
       }
 
       return new Response(JSON.stringify({ ok: true, lot }), { headers: { ...headers, 'Content-Type': 'application/json' } });
@@ -516,8 +612,137 @@ export default {
     // из сохранений участников при чтении (живые данные, как на арене).
 
     const CLAN_MAX_MEMBERS = 20;
+    const RAID_COOLDOWN_MS = 10 * 60 * 1000; // удар по боссу раз в 10 мин
+    const RAID_BOSSES = ['Каменный голем', 'Гидра бездны', 'Тёмный титан', 'Пожиратель миров', 'Древний дракон'];
+    const raidName = (tier) => RAID_BOSSES[(tier - 1) % RAID_BOSSES.length] + (tier > RAID_BOSSES.length ? ` +${Math.floor((tier - 1) / RAID_BOSSES.length)}` : '');
+    const raidHpMax = (tier, size) => 1000 * tier * (1 + Math.floor(Math.max(1, size) / 3)); // соло (клан 1) = 1000×тир
+    const newRaid = (tier, size) => { const hp = raidHpMax(tier, size); return { tier, hpMax: hp, hp, contributors: {}, hits: {}, startedAt: Date.now() }; };
+    // приведение старых «раздутых» боссов к новой (меньшей) формуле, сохраняя % остатка
+    const rescaleRaid = (raid, size) => { if (!raid) return; const fresh = raidHpMax(raid.tier, size); if (raid.hpMax > fresh) { const frac = raid.hp / raid.hpMax; raid.hpMax = fresh; raid.hp = Math.max(1, Math.round(fresh * frac)); } };
+    const pushClanLog = (clan, text) => { clan.log = clan.log || []; clan.log.unshift({ text, ts: Date.now() }); if (clan.log.length > 30) clan.log.length = 30; };
+    const saveName = async (id) => { const s = await env.SAVES.get(`save_${id}`, 'json'); return (s && s.name) || 'Полубог'; };
     const jsonResp = (obj, status = 200) =>
       new Response(JSON.stringify(obj), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+    // ===== Монетизация (Фаза 1): паки душ за Telegram Stars =====
+
+    // GET /pay/packs — каталог паков для витрины (публичный)
+    if (url.pathname === '/pay/packs' && request.method === 'GET') {
+      const list = Object.entries(SOUL_PACKS).map(([id, p]) => ({ id, stars: p.stars, souls: p.souls, title: p.title }));
+      return jsonResp(list);
+    }
+
+    // POST /pay/create-invoice  body: { initData, packId } | { initData, product:'premium' }
+    if (url.pathname === '/pay/create-invoice' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      if (!env.BOT_TOKEN) return jsonResp({ error: 'no_bot' }, 500);
+
+      // Премиум-аккаунт за Stars (Фаза 3)
+      if (body.product === 'premium') {
+        const payload = `prem:${PREMIUM_ACCOUNT_DAYS}:${user.id}`;
+        const res = await tgApi(env.BOT_TOKEN, 'createInvoiceLink', {
+          title: `👑 Премиум-аккаунт (${PREMIUM_ACCOUNT_DAYS} дн.)`,
+          description: `Премиум-статус в «Вавилон» на ${PREMIUM_ACCOUNT_DAYS} дней.`,
+          payload,
+          currency: 'XTR',
+          prices: [{ label: `👑 ${PREMIUM_ACCOUNT_DAYS} дн.`, amount: PREMIUM_ACCOUNT_STARS }],
+        });
+        if (!res || !res.ok || !res.result) return jsonResp({ error: 'invoice_failed', detail: res && res.description }, 502);
+        return jsonResp({ url: res.result });
+      }
+
+      const pack = SOUL_PACKS[body.packId];
+      if (!pack) return jsonResp({ error: 'bad_pack' }, 400);
+      // payload зашивает пак и игрока — по нему начислим в вебхуке (≤128 байт)
+      const payload = `souls:${body.packId}:${user.id}`;
+      const res = await tgApi(env.BOT_TOKEN, 'createInvoiceLink', {
+        title: `${pack.souls} 👻 — ${pack.title}`,
+        description: `Покупка ${pack.souls} душ для «Вавилон».`,
+        payload,
+        currency: 'XTR',
+        prices: [{ label: `${pack.souls} 👻`, amount: pack.stars }],
+      });
+      if (!res || !res.ok || !res.result) return jsonResp({ error: 'invoice_failed', detail: res && res.description }, 502);
+      return jsonResp({ url: res.result });
+    }
+
+    // POST /bot/webhook — апдейты от Telegram (pre_checkout + successful_payment).
+    // Защита: заголовок секрета, заданный при setWebhook (env.WEBHOOK_SECRET).
+    if (url.pathname === '/bot/webhook' && request.method === 'POST') {
+      if (env.WEBHOOK_SECRET) {
+        const got = request.headers.get('X-Telegram-Bot-Api-Secret-Token') || '';
+        if (got !== env.WEBHOOK_SECRET) return new Response('Forbidden', { status: 403 });
+      }
+      let upd; try { upd = await request.json(); } catch { return new Response('ok'); }
+
+      // 1) Подтверждение перед оплатой — обязателен ответ в течение 10 сек
+      if (upd.pre_checkout_query) {
+        const q = upd.pre_checkout_query;
+        const pl = typeof q.invoice_payload === 'string' ? q.invoice_payload.split(':') : [];
+        const okItem = (pl[0] === 'souls' && SOUL_PACKS[pl[1]]) || pl[0] === 'prem';
+        await tgApi(env.BOT_TOKEN, 'answerPreCheckoutQuery', okItem
+          ? { pre_checkout_query_id: q.id, ok: true }
+          : { pre_checkout_query_id: q.id, ok: false, error_message: 'Товар недоступен' });
+        return new Response('ok');
+      }
+
+      // 2) Успешная оплата — начисляем в серверный кошелёк (идемпотентно)
+      const sp = upd.message && upd.message.successful_payment;
+      if (sp && typeof sp.invoice_payload === 'string') {
+        const [kind, arg, uid] = sp.invoice_payload.split(':');
+        const charge = sp.telegram_payment_charge_id;
+        if (uid && charge) {
+          const key = `wallet_${uid}`;
+          const w = (await env.SAVES.get(key, 'json')) || { pending: 0, lifetime: 0, ledger: [] };
+          const seen = (w.ledger || []).some((e) => e.charge === charge);
+          if (!seen) {
+            w.ledger = w.ledger || [];
+            let note = '';
+            if (kind === 'souls' && SOUL_PACKS[arg]) {
+              const pack = SOUL_PACKS[arg];
+              w.pending = (w.pending || 0) + pack.souls;
+              w.lifetime = (w.lifetime || 0) + pack.souls;
+              w.ledger.push({ charge, packId: arg, souls: pack.souls, stars: sp.total_amount, ts: Date.now() });
+              note = `<b>${pack.souls} 👻</b> зачислятся на ваш счёт в течение 1–2 минут.`;
+            } else if (kind === 'prem') {
+              const days = parseInt(arg, 10) || PREMIUM_ACCOUNT_DAYS;
+              w.premiumPendingDays = (w.premiumPendingDays || 0) + days;
+              w.ledger.push({ charge, product: 'premium', days, stars: sp.total_amount, ts: Date.now() });
+              note = `👑 <b>Премиум-аккаунт</b> на ${days} дн. активируется в течение 1–2 минут.`;
+            }
+            if (note) {
+              if (w.ledger.length > 200) w.ledger = w.ledger.slice(-200);
+              await env.SAVES.put(key, JSON.stringify(w));
+              if (env.BOT_TOKEN && env.BOT_HANDLE) {
+                await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, uid, `✅ <b>Оплата получена!</b>\n${note}`);
+              }
+            }
+          }
+        }
+        return new Response('ok');
+      }
+      return new Response('ok');
+    }
+
+    // POST /pay/claim  body: { initData } — забрать начисленное (души и/или премиум)
+    if (url.pathname === '/pay/claim' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const key = `wallet_${user.id}`;
+      const w = (await env.SAVES.get(key, 'json')) || { pending: 0, lifetime: 0, ledger: [] };
+      const amount = w.pending || 0;
+      const premiumDays = w.premiumPendingDays || 0;
+      if (amount > 0 || premiumDays > 0) {
+        w.pending = 0;
+        w.premiumPendingDays = 0;
+        w.delivered = (w.delivered || 0) + amount;
+        await env.SAVES.put(key, JSON.stringify(w));
+      }
+      return jsonResp({ souls: amount, premiumDays, lifetime: w.lifetime || 0 });
+    }
 
     const loadAllClans = async () => {
       const clans = [];
@@ -536,7 +761,7 @@ export default {
       const clans = await loadAllClans();
       const summary = clans.map((c) => ({
         id: c.id, name: c.name, tag: c.tag || '', leaderName: c.leaderName,
-        size: (c.memberIds || []).length, treasury: c.treasury || 0,
+        size: (c.memberIds || []).length, treasury: c.treasury || 0, open: c.open !== false,
       })).sort((a, b) => b.size - a.size || b.treasury - a.treasury);
       return jsonResp(summary);
     }
@@ -549,12 +774,26 @@ export default {
       if (!clanId) return jsonResp(null);
       const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
       if (!clan) { await env.SAVES.delete(`clanmember_${userId}`); return jsonResp(null); }
+      const officerIds = (clan.officerIds || []).map(String);
       const members = await Promise.all((clan.memberIds || []).map(async (mid) => {
         const s = await env.SAVES.get(`save_${mid}`, 'json');
-        return { id: mid, name: (s && s.name) || 'Полубог', xpLevel: (s && s.xpLevel) || 1, danger: (s && s.danger) || 1, isLeader: String(mid) === String(clan.leaderId) };
+        const isLeader = String(mid) === String(clan.leaderId);
+        return { id: mid, name: (s && s.name) || 'Полубог', xpLevel: (s && s.xpLevel) || 1, danger: (s && s.danger) || 1, isLeader, isOfficer: !isLeader && officerIds.includes(String(mid)) };
       }));
-      members.sort((a, b) => b.isLeader - a.isLeader || b.danger - a.danger);
-      return jsonResp({ id: clan.id, name: clan.name, tag: clan.tag || '', leaderId: clan.leaderId, leaderName: clan.leaderName, treasury: clan.treasury || 0, createdAt: clan.createdAt, size: members.length, members });
+      members.sort((a, b) => b.isLeader - a.isLeader || b.isOfficer - a.isOfficer || b.danger - a.danger);
+      const applicants = (clan.applicants || []).map((a) => ({ id: String(a.id), name: a.name || 'Полубог', ts: a.ts || 0 }));
+      const size = members.length;
+      const rd = clan.raid || newRaid(1, size);
+      rescaleRaid(rd, size);
+      const contr = rd.contributors || {};
+      const nameOf = (mid) => { const m = members.find((x) => String(x.id) === String(mid)); return m ? m.name : 'Боец'; };
+      const top = Object.entries(contr).map(([mid, dmg]) => ({ name: nameOf(mid), dmg })).sort((a, b) => b.dmg - a.dmg).slice(0, 3);
+      const lastHit = (rd.hits || {})[String(userId)] || 0;
+      const cdLeft = Math.max(0, RAID_COOLDOWN_MS - (Date.now() - lastHit));
+      const myReward = (clan.raidRewards || {})[String(userId)] || null;
+      const raid = { tier: rd.tier, hp: Math.max(0, rd.hp), hpMax: rd.hpMax, name: raidName(rd.tier), myDmg: contr[String(userId)] || 0, top, cdLeft };
+      const shop = (clan.shop || []).map((e) => ({ sid: e.sid, ownerId: e.ownerId, ownerName: e.ownerName, rentedBy: e.rentedBy || null, rentedByName: e.rentedByName || '', item: e.item }));
+      return jsonResp({ id: clan.id, name: clan.name, tag: clan.tag || '', leaderId: clan.leaderId, leaderName: clan.leaderName, open: clan.open !== false, treasury: clan.treasury || 0, upgrades: clan.upgrades || {}, createdAt: clan.createdAt, size, members, officerIds, applicants, raid, raidReward: myReward, motd: clan.motd || '', motdBy: clan.motdBy || '', motdAt: clan.motdAt || 0, log: (clan.log || []).slice(0, 20), shop });
     }
 
     // --- POST /clan/create  body: { initData, name, tag } ---
@@ -567,7 +806,7 @@ export default {
       const tag = String(body.tag || '').trim().slice(0, 5);
       if (name.length < 3) return jsonResp({ error: 'name' }, 400);
       const id = crypto.randomUUID();
-      const clan = { id, name, tag, leaderId: String(user.id), leaderName: user.name, memberIds: [String(user.id)], treasury: 0, createdAt: Date.now() };
+      const clan = { id, name, tag, leaderId: String(user.id), leaderName: user.name, memberIds: [String(user.id)], officerIds: [], applicants: [], open: true, treasury: 0, upgrades: {}, motd: '', motdBy: '', motdAt: 0, log: [], shop: [], createdAt: Date.now() };
       await env.SAVES.put(`clan_${id}`, JSON.stringify(clan));
       await env.SAVES.put(`clanmember_${user.id}`, JSON.stringify(id));
       return jsonResp({ ok: true, id });
@@ -603,13 +842,17 @@ export default {
       const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
       if (clan) {
         clan.memberIds = (clan.memberIds || []).filter((m) => String(m) !== String(user.id));
+        clan.officerIds = (clan.officerIds || []).filter((m) => String(m) !== String(user.id));
         if (clan.memberIds.length === 0) {
           await env.SAVES.delete(`clan_${clanId}`); // клан распался
         } else {
-          if (String(clan.leaderId) === String(user.id)) { // лидер ушёл — передаём старшинство
-            clan.leaderId = clan.memberIds[0];
+          pushClanLog(clan, `🚪 ${user.name} покинул клан`);
+          if (String(clan.leaderId) === String(user.id)) { // лидер ушёл — старшинство офицеру, иначе старейшему бойцу
+            clan.leaderId = clan.officerIds[0] || clan.memberIds[0];
+            clan.officerIds = clan.officerIds.filter((m) => String(m) !== String(clan.leaderId));
             const s = await env.SAVES.get(`save_${clan.leaderId}`, 'json');
             clan.leaderName = (s && s.name) || 'Полубог';
+            pushClanLog(clan, `👑 Новый лидер: ${clan.leaderName}`);
           }
           await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
         }
@@ -629,8 +872,493 @@ export default {
       const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
       if (!clan) return jsonResp({ error: 'gone' }, 404);
       clan.treasury = (clan.treasury || 0) + amount;
+      pushClanLog(clan, `💰 ${user.name}: +${amount} 🪙 в казну`);
       await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
       return jsonResp({ ok: true, treasury: clan.treasury });
+    }
+
+    // --- POST /clan/upgrade  body: { initData, key } --- улучшение за казну (только лидер) ---
+    if (url.pathname === '/clan/upgrade' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const KEYS = { artifact: 1, vault: 1, forge: 1, altar: 1 };
+      const key = String(body.key || '');
+      if (!KEYS[key]) return jsonResp({ error: 'key' }, 400);
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if (String(clan.leaderId) !== String(user.id)) return jsonResp({ error: 'notleader' }, 403);
+      if (!clan.upgrades) clan.upgrades = {};
+      const lvl = clan.upgrades[key] || 0;
+      if (lvl >= 5) return jsonResp({ error: 'max' }, 400);
+      const cost = 1000 * (lvl + 1) * (lvl + 1); // 1000,4000,9000,16000,25000
+      if ((clan.treasury || 0) < cost) return jsonResp({ error: 'treasury', cost }, 402);
+      clan.treasury -= cost;
+      clan.upgrades[key] = lvl + 1;
+      pushClanLog(clan, `⚜️ Улучшение «${key}» до ур. ${lvl + 1} (−${cost} 🪙)`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, treasury: clan.treasury, upgrades: clan.upgrades });
+    }
+
+    // --- POST /clan/apply  body: { initData, clanId } --- вступить (открытый) или подать заявку (закрытый) ---
+    if (url.pathname === '/clan/apply' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      if (await env.SAVES.get(`clanmember_${user.id}`, 'json')) return jsonResp({ error: 'already' }, 409);
+      const clan = await env.SAVES.get(`clan_${body.clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if ((clan.memberIds || []).length >= CLAN_MAX_MEMBERS) return jsonResp({ error: 'full' }, 429);
+      if (clan.open !== false) { // открытый клан — мгновенное вступление
+        clan.memberIds.push(String(user.id));
+        pushClanLog(clan, `🛡 ${user.name} вступил в клан`);
+        await env.SAVES.put(`clan_${clan.id}`, JSON.stringify(clan));
+        await env.SAVES.put(`clanmember_${user.id}`, JSON.stringify(clan.id));
+        if (env.BOT_TOKEN && env.BOT_HANDLE && String(clan.leaderId) !== String(user.id)) {
+          await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, clan.leaderId, `🛡 <b>Пополнение в клане!</b>\n${user.name} вступил в клан «${clan.name}».`);
+        }
+        return jsonResp({ ok: true, joined: true, id: clan.id });
+      }
+      // закрытый клан — заявка
+      clan.applicants = clan.applicants || [];
+      if (clan.applicants.some((a) => String(a.id) === String(user.id))) return jsonResp({ ok: true, pending: true });
+      clan.applicants.push({ id: String(user.id), name: user.name, ts: Date.now() });
+      await env.SAVES.put(`clan_${clan.id}`, JSON.stringify(clan));
+      if (env.BOT_TOKEN && env.BOT_HANDLE) {
+        await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, clan.leaderId, `📨 <b>Заявка в клан «${clan.name}»</b>\n${user.name} хочет вступить. Прими или отклони в разделе «Кланы».`);
+      }
+      return jsonResp({ ok: true, pending: true });
+    }
+
+    // --- POST /clan/applicant  body: { initData, targetId, action } --- принять/отклонить заявку (лидер/офицер) ---
+    if (url.pathname === '/clan/applicant' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const isLeader = String(clan.leaderId) === String(user.id);
+      const isOfficer = (clan.officerIds || []).map(String).includes(String(user.id));
+      if (!isLeader && !isOfficer) return jsonResp({ error: 'noperm' }, 403);
+      const targetId = String(body.targetId || '');
+      const action = String(body.action || '');
+      clan.applicants = clan.applicants || [];
+      const app = clan.applicants.find((a) => String(a.id) === targetId);
+      if (!app) return jsonResp({ error: 'noapp' }, 404);
+      clan.applicants = clan.applicants.filter((a) => String(a.id) !== targetId);
+      if (action === 'accept') {
+        if ((clan.memberIds || []).length >= CLAN_MAX_MEMBERS) { await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan)); return jsonResp({ error: 'full' }, 429); }
+        if (await env.SAVES.get(`clanmember_${targetId}`, 'json')) { // успел вступить в другой клан
+          await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+          return jsonResp({ error: 'busy' }, 409);
+        }
+        clan.memberIds.push(targetId);
+        await env.SAVES.put(`clanmember_${targetId}`, JSON.stringify(clanId));
+        pushClanLog(clan, `🛡 ${app.name} принят в клан`);
+        if (env.BOT_TOKEN && env.BOT_HANDLE) await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, targetId, `✅ <b>Заявка принята!</b>\nТы теперь в клане «${clan.name}».`);
+      } else if (env.BOT_TOKEN && env.BOT_HANDLE) {
+        await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, targetId, `🚫 Заявка в клан «${clan.name}» отклонена.`);
+      }
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true });
+    }
+
+    // --- POST /clan/kick  body: { initData, targetId } --- кик (лидер; офицер — только рядовых) ---
+    if (url.pathname === '/clan/kick' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const targetId = String(body.targetId || '');
+      if (targetId === String(user.id)) return jsonResp({ error: 'self' }, 400);
+      if (String(clan.leaderId) === targetId) return jsonResp({ error: 'leader' }, 403);
+      if (!(clan.memberIds || []).map(String).includes(targetId)) return jsonResp({ error: 'notmember' }, 404);
+      const isLeader = String(clan.leaderId) === String(user.id);
+      const officers = (clan.officerIds || []).map(String);
+      const isOfficer = officers.includes(String(user.id));
+      if (!isLeader && !isOfficer) return jsonResp({ error: 'noperm' }, 403);
+      if (!isLeader && officers.includes(targetId)) return jsonResp({ error: 'noperm' }, 403); // офицер не кикает офицера
+      clan.memberIds = (clan.memberIds || []).filter((m) => String(m) !== targetId);
+      clan.officerIds = officers.filter((m) => m !== targetId);
+      await env.SAVES.delete(`clanmember_${targetId}`);
+      pushClanLog(clan, `⚔️ ${await saveName(targetId)} исключён из клана`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      if (env.BOT_TOKEN && env.BOT_HANDLE) await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, targetId, `⚔️ Тебя исключили из клана «${clan.name}».`);
+      return jsonResp({ ok: true });
+    }
+
+    // --- POST /clan/promote  body: { initData, targetId } --- назначить/снять офицера (лидер) ---
+    if (url.pathname === '/clan/promote' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if (String(clan.leaderId) !== String(user.id)) return jsonResp({ error: 'notleader' }, 403);
+      const targetId = String(body.targetId || '');
+      if (targetId === String(user.id)) return jsonResp({ error: 'self' }, 400);
+      if (!(clan.memberIds || []).map(String).includes(targetId)) return jsonResp({ error: 'notmember' }, 404);
+      const officers = (clan.officerIds || []).map(String);
+      let promoted;
+      if (officers.includes(targetId)) { clan.officerIds = officers.filter((m) => m !== targetId); promoted = false; }
+      else { clan.officerIds = [...officers, targetId]; promoted = true; }
+      pushClanLog(clan, `🎖 ${await saveName(targetId)} ${promoted ? 'назначен офицером' : 'снят с офицеров'}`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      if (env.BOT_TOKEN && env.BOT_HANDLE) await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, targetId, promoted ? `🎖 Тебя назначили офицером клана «${clan.name}»!` : `Тебя сняли с поста офицера клана «${clan.name}».`);
+      return jsonResp({ ok: true, officerIds: clan.officerIds });
+    }
+
+    // --- POST /clan/transfer  body: { initData, targetId } --- передать лидерство (лидер) ---
+    if (url.pathname === '/clan/transfer' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if (String(clan.leaderId) !== String(user.id)) return jsonResp({ error: 'notleader' }, 403);
+      const targetId = String(body.targetId || '');
+      if (targetId === String(user.id)) return jsonResp({ error: 'self' }, 400);
+      if (!(clan.memberIds || []).map(String).includes(targetId)) return jsonResp({ error: 'notmember' }, 404);
+      const oldLeader = String(clan.leaderId);
+      clan.leaderId = targetId;
+      const s = await env.SAVES.get(`save_${targetId}`, 'json');
+      clan.leaderName = (s && s.name) || 'Полубог';
+      const officers = (clan.officerIds || []).map(String).filter((m) => m !== targetId);
+      officers.push(oldLeader); // бывший лидер становится офицером
+      clan.officerIds = officers;
+      pushClanLog(clan, `👑 Лидерство передано: ${clan.leaderName}`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      if (env.BOT_TOKEN && env.BOT_HANDLE) await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, targetId, `👑 <b>Ты теперь лидер клана «${clan.name}»!</b>`);
+      return jsonResp({ ok: true });
+    }
+
+    // --- POST /clan/toggle-open  body: { initData } --- открыть/закрыть приём (лидер) ---
+    if (url.pathname === '/clan/toggle-open' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      if (String(clan.leaderId) !== String(user.id)) return jsonResp({ error: 'notleader' }, 403);
+      clan.open = clan.open === false; // toggle: closed→open, open→closed
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, open: clan.open });
+    }
+
+    // --- POST /clan/raid/hit  body: { initData, dmg } --- засчитать урон по боссу из боя (кулдаун) ---
+    if (url.pathname === '/clan/raid/hit' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const size = (clan.memberIds || []).length;
+      if (!clan.raid) clan.raid = newRaid(1, size);
+      const raid = clan.raid;
+      rescaleRaid(raid, size); // старые раздутые боссы → новая формула
+      raid.hits = raid.hits || {}; raid.contributors = raid.contributors || {};
+      const now = Date.now();
+      const last = raid.hits[String(user.id)] || 0;
+      if (now - last < RAID_COOLDOWN_MS) return jsonResp({ error: 'cooldown', cdLeft: RAID_COOLDOWN_MS - (now - last) }, 429);
+      // урон приходит из интерактивного боя — без искусственного потолка, только остаток HP босса
+      const reqDmg = Math.max(0, Math.floor(Number(body.dmg) || 0));
+      const dmg = Math.min(reqDmg, raid.hp);
+      if (dmg <= 0) return jsonResp({ ok: true, dmg: 0, killed: false, raid: { tier: raid.tier, hp: Math.max(0, raid.hp), hpMax: raid.hpMax, name: raidName(raid.tier), cdLeft: 0 } });
+      raid.hp -= dmg;
+      raid.contributors[String(user.id)] = (raid.contributors[String(user.id)] || 0) + dmg;
+      let killed = false; let reward = null;
+      if (raid.hp <= 0) {
+        killed = true;
+        const tier = raid.tier;
+        const contrib = raid.contributors;
+        const total = Object.values(contrib).reduce((a, b) => a + b, 0) || 1;
+        clan.raidRewards = clan.raidRewards || {};
+        clan.treasury = (clan.treasury || 0) + 500 * tier; // награда всем — в казну
+        for (const mid of clan.memberIds) {
+          const d = contrib[String(mid)] || 0;
+          const r = clan.raidRewards[String(mid)] || { gold: 0, sparks: 0, xp: 0 };
+          r.gold += 300 * tier + Math.round(700 * tier * (d / total)); // база всем + бонус по вкладу
+          r.sparks += 150 * tier;
+          r.xp = (r.xp || 0) + 150 * tier; // опыт поровну всем участникам клана (даже не бившим)
+          clan.raidRewards[String(mid)] = r;
+        }
+        reward = clan.raidRewards[String(user.id)];
+        pushClanLog(clan, `🐉 Босс «${raidName(tier)}» (тир ${tier}) повержен!`);
+        clan.raid = newRaid(tier + 1, size); // следующий босс крепче
+        if (env.BOT_TOKEN && env.BOT_HANDLE) {
+          for (const mid of clan.memberIds) {
+            await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, mid, `🐉 <b>Босс повержен!</b>\nКлан «${clan.name}» одолел «${raidName(tier)}». Забери награду в разделе «Кланы».`);
+          }
+        }
+      } else {
+        // босс выжил — это отступление/поражение, включаем перезарядку 10 мин.
+        // Если убил — кулдауна нет, можно сразу идти на следующего босса.
+        raid.hits[String(user.id)] = now;
+      }
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      const cur = clan.raid;
+      return jsonResp({ ok: true, dmg, killed, reward, raid: { tier: cur.tier, hp: Math.max(0, cur.hp), hpMax: cur.hpMax, name: raidName(cur.tier), cdLeft: killed ? 0 : RAID_COOLDOWN_MS } });
+    }
+
+    // --- POST /clan/raid/claim  body: { initData } --- забрать награду за рейд ---
+    if (url.pathname === '/clan/raid/claim' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const r = (clan.raidRewards || {})[String(user.id)];
+      if (!r) return jsonResp({ error: 'none' }, 404);
+      delete clan.raidRewards[String(user.id)];
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, reward: r });
+    }
+
+    // --- POST /clan/motd  body: { initData, text } --- сообщение дня (лидер/офицер) ---
+    if (url.pathname === '/clan/motd' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const isLeader = String(clan.leaderId) === String(user.id);
+      const isOfficer = (clan.officerIds || []).map(String).includes(String(user.id));
+      if (!isLeader && !isOfficer) return jsonResp({ error: 'noperm' }, 403);
+      clan.motd = String(body.text || '').slice(0, 200);
+      clan.motdBy = user.name;
+      clan.motdAt = Date.now();
+      pushClanLog(clan, `📢 ${user.name} обновил сообщение дня`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, motd: clan.motd, motdBy: clan.motdBy, motdAt: clan.motdAt });
+    }
+
+    // --- POST /clan/shop/lend  body: { initData, item } --- одолжить вещь клану ---
+    if (url.pathname === '/clan/shop/lend' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const item = body.item;
+      if (!item || typeof item !== 'object' || !item.slot) return jsonResp({ error: 'item' }, 400);
+      clan.shop = clan.shop || [];
+      if (clan.shop.length >= CLAN_MAX_MEMBERS * 20) return jsonResp({ error: 'shopfull' }, 429);
+      if (clan.shop.filter((e) => String(e.ownerId) === String(user.id)).length >= 20) return jsonResp({ error: 'ownerfull' }, 429);
+      const clean = { ...item }; delete clean.id; delete clean.rented; delete clean.sid; delete clean.rentOwnerName; // храним чистый предмет
+      const sid = crypto.randomUUID();
+      clan.shop.push({ sid, item: clean, ownerId: String(user.id), ownerName: user.name, rentedBy: null, rentedByName: '', listedAt: Date.now() });
+      pushClanLog(clan, `📦 ${user.name} выставил «${clean.name}» в арсенал`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, sid });
+    }
+
+    // --- POST /clan/shop/rent  body: { initData, sid } --- арендовать вещь ---
+    if (url.pathname === '/clan/shop/rent' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const e = (clan.shop || []).find((x) => x.sid === String(body.sid));
+      if (!e) return jsonResp({ error: 'noitem' }, 404);
+      if (String(e.ownerId) === String(user.id)) return jsonResp({ error: 'own' }, 400);
+      if (e.rentedBy && String(e.rentedBy) !== String(user.id)) return jsonResp({ error: 'taken' }, 409);
+      e.rentedBy = String(user.id); e.rentedByName = user.name;
+      pushClanLog(clan, `🔑 ${user.name} арендовал «${e.item.name}»`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true, sid: e.sid, item: e.item, ownerName: e.ownerName });
+    }
+
+    // --- POST /clan/shop/return  body: { initData, sid } --- вернуть аренду добровольно ---
+    if (url.pathname === '/clan/shop/return' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const e = (clan.shop || []).find((x) => x.sid === String(body.sid));
+      if (!e) return jsonResp({ error: 'noitem' }, 404);
+      if (String(e.rentedBy) !== String(user.id)) return jsonResp({ error: 'notyours' }, 403);
+      e.rentedBy = null; e.rentedByName = '';
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      return jsonResp({ ok: true });
+    }
+
+    // --- POST /clan/shop/reclaim  body: { initData, sid } --- владелец забирает вещь обратно ---
+    if (url.pathname === '/clan/shop/reclaim' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const clan = await env.SAVES.get(`clan_${clanId}`, 'json');
+      if (!clan) return jsonResp({ error: 'gone' }, 404);
+      const e = (clan.shop || []).find((x) => x.sid === String(body.sid));
+      if (!e) return jsonResp({ error: 'noitem' }, 404);
+      if (String(e.ownerId) !== String(user.id)) return jsonResp({ error: 'notowner' }, 403);
+      clan.shop = clan.shop.filter((x) => x.sid !== e.sid);
+      pushClanLog(clan, `📥 ${user.name} забрал «${e.item.name}» из арсенала`);
+      await env.SAVES.put(`clan_${clanId}`, JSON.stringify(clan));
+      if (e.rentedBy && env.BOT_TOKEN && env.BOT_HANDLE && String(e.rentedBy) !== String(user.id)) {
+        await tgNotify(env.BOT_TOKEN, env.BOT_HANDLE, e.rentedBy, `🔒 Владелец забрал арендованную вещь «${e.item.name}» из клана «${clan.name}».`);
+      }
+      return jsonResp({ ok: true, item: e.item });
+    }
+
+    // --- Чат мира (общий) ---
+    // Ключ KV для комнаты: глобальная — старый ключ chat_world (совместимость), языки — chat_world_<room>
+    const chatRoomKey = (room) => (room === 'global' ? 'chat_world' : `chat_world_${room}`);
+    const normRoom = (r) => (CHAT_ROOMS.includes(r) ? r : 'global');
+    if (url.pathname === '/chat/world' && request.method === 'GET') {
+      const room = normRoom(url.searchParams.get('room') || 'global');
+      const list = (await env.SAVES.get(chatRoomKey(room), 'json')) || [];
+      return jsonResp(list);
+    }
+    if (url.pathname === '/chat/world' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const uid = String(user.id);
+
+      // Проверка действующего бана
+      const ban = (await env.SAVES.get(`chatban_${uid}`, 'json')) || { strikes: 0 };
+      if (ban.perma) return jsonResp({ error: 'banned', perma: true }, 403);
+      if (ban.until && ban.until > Date.now()) return jsonResp({ error: 'banned', until: ban.until, strikes: ban.strikes }, 403);
+
+      const text = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+      if (!text) return jsonResp({ error: 'empty' }, 400);
+
+      // Фильтр мата: нарушение → бан на час; после 3-го — навсегда. Сообщение не публикуется.
+      if (hasProfanity(text)) {
+        const strikes = (ban.strikes || 0) + 1;
+        if (strikes >= 3) {
+          await env.SAVES.put(`chatban_${uid}`, JSON.stringify({ perma: true, strikes }));
+          return jsonResp({ error: 'banned', perma: true, strikes }, 403);
+        }
+        const until = Date.now() + CHAT_TEMP_BAN_MS;
+        await env.SAVES.put(`chatban_${uid}`, JSON.stringify({ until, strikes }));
+        return jsonResp({ error: 'profanity', until, strikes }, 403);
+      }
+
+      const room = normRoom(body.room || 'global');
+      const key = chatRoomKey(room);
+      const list = (await env.SAVES.get(key, 'json')) || [];
+      const sd = await env.SAVES.get(`save_${uid}`, 'json');
+      const prem = !!(sd && (sd.premiumUntil || 0) > Date.now());
+      list.push({ uid, name: user.name, text, ts: Date.now(), prem });
+      while (list.length > 50) list.shift();
+      await env.SAVES.put(key, JSON.stringify(list));
+      return jsonResp({ ok: true });
+    }
+
+    // --- Чат клана (по участнику) ---
+    if (url.pathname === '/chat/clan' && request.method === 'GET') {
+      const userId = url.searchParams.get('user_id');
+      const clanId = userId ? await env.SAVES.get(`clanmember_${userId}`, 'json') : null;
+      if (!clanId) return jsonResp([]);
+      const list = (await env.SAVES.get(`chat_clan_${clanId}`, 'json')) || [];
+      return jsonResp(list);
+    }
+    if (url.pathname === '/chat/clan' && request.method === 'POST') {
+      let body; try { body = await request.json(); } catch { return new Response('Invalid JSON', { status: 400, headers }); }
+      const user = await userFromInitData(body.initData);
+      if (!user) return new Response('Unauthorized', { status: 401, headers });
+      const clanId = await env.SAVES.get(`clanmember_${user.id}`, 'json');
+      if (!clanId) return jsonResp({ error: 'none' }, 404);
+      const uid = String(user.id);
+
+      // Тот же чат-бан, что и в мировом чате
+      const ban = (await env.SAVES.get(`chatban_${uid}`, 'json')) || { strikes: 0 };
+      if (ban.perma) return jsonResp({ error: 'banned', perma: true }, 403);
+      if (ban.until && ban.until > Date.now()) return jsonResp({ error: 'banned', until: ban.until, strikes: ban.strikes }, 403);
+
+      const text = String(body.text || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+      if (!text) return jsonResp({ error: 'empty' }, 400);
+
+      if (hasProfanity(text)) {
+        const strikes = (ban.strikes || 0) + 1;
+        if (strikes >= 3) {
+          await env.SAVES.put(`chatban_${uid}`, JSON.stringify({ perma: true, strikes }));
+          return jsonResp({ error: 'banned', perma: true, strikes }, 403);
+        }
+        const until = Date.now() + CHAT_TEMP_BAN_MS;
+        await env.SAVES.put(`chatban_${uid}`, JSON.stringify({ until, strikes }));
+        return jsonResp({ error: 'profanity', until, strikes }, 403);
+      }
+
+      const key = `chat_clan_${clanId}`;
+      const list = (await env.SAVES.get(key, 'json')) || [];
+      const sd = await env.SAVES.get(`save_${uid}`, 'json');
+      const prem = !!(sd && (sd.premiumUntil || 0) > Date.now());
+      list.push({ uid: String(user.id), name: user.name, text, ts: Date.now(), prem });
+      while (list.length > 50) list.shift();
+      await env.SAVES.put(key, JSON.stringify(list));
+      return jsonResp({ ok: true });
+    }
+
+    // --- GET /admin/revenue?key=ADMIN_KEY --- сводка по продажам душ ---
+    if (url.pathname === '/admin/revenue' && request.method === 'GET') {
+      const key = url.searchParams.get('key');
+      if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) {
+        return new Response('Forbidden', { status: 403, headers });
+      }
+      const bal = await tgApi(env.BOT_TOKEN, 'getMyStarBalance', {});
+      const starBalance = bal && bal.ok && bal.result ? (bal.result.amount || 0) : null;
+
+      let cursor, buyers = 0, soulsSold = 0, starsEarned = 0;
+      const purchases = [];
+      do {
+        const listed = await env.SAVES.list({ prefix: 'wallet_', cursor });
+        const entries = await Promise.all(
+          listed.keys.map(async ({ name }) => ({ uid: name.slice(7), w: await env.SAVES.get(name, 'json') }))
+        );
+        for (const { uid, w } of entries) {
+          if (!w) continue;
+          buyers++;
+          soulsSold += w.lifetime || 0;
+          for (const e of (w.ledger || [])) {
+            starsEarned += e.stars || 0;
+            purchases.push({ uid, packId: e.packId, souls: e.souls, stars: e.stars, ts: e.ts });
+          }
+        }
+        cursor = listed.list_complete ? undefined : listed.cursor;
+      } while (cursor);
+      purchases.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+      return jsonResp({
+        starBalance,
+        starsEarned,
+        soulsSold,
+        buyers,
+        orders: purchases.length,
+        usdEstimate: +(starsEarned * 0.013).toFixed(2),
+        recent: purchases.slice(0, 40),
+      });
     }
 
     // --- GET /admin?key=ADMIN_KEY ---

@@ -1,0 +1,10 @@
+name = "babylon-save"
+main = "save-worker.js"
+compatibility_date = "2024-11-01"
+kv_namespaces = [
+  { binding = "SAVES", id = "2c96d0f60ce34abfb9ae77db96c4fd21" }
+]
+[triggers]
+crons = ["*/10 * * * *"]
+[vars]
+BOT_HANDLE = "babylongame_bot"

@@ -38,7 +38,7 @@ function checkQuests() {
       Object.entries(q.reward).forEach(([k, v]) => addRes(k, v));
       st.stage += 1;
       const rstr = Object.entries(q.reward).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(', ');
-      pushLog(`✅ Квест «${q.name}» — этап ${st.stage}! Награда: ${rstr}.`);
+      pushLog('✅ Квест «{q}» — этап {stage}! Награда: {rstr}.', {q:L(q.name), stage:st.stage, rstr});
       if (st.stage >= stages) st.done = true;
     }
   });
@@ -73,7 +73,7 @@ function dailyBaselineSnapshot() {
 function ensureDaily() {
   const today = todayKey();
   if (!player.daily) {
-    player.daily = { cycleDay: today, baseline: dailyBaselineSnapshot(), questClaimed: {}, allClaimed: false, loginClaimedDay: null, streak: 0 };
+    player.daily = { cycleDay: today, baseline: dailyBaselineSnapshot(), questClaimed: {}, allClaimed: false, loginClaimedDay: null, streak: 0, arena: 0 };
     return;
   }
   if (player.daily.cycleDay !== today) {
@@ -81,7 +81,9 @@ function ensureDaily() {
     player.daily.baseline = dailyBaselineSnapshot();
     player.daily.questClaimed = {};
     player.daily.allClaimed = false;
+    player.daily.arena = 0;
   }
+  if (player.daily.arena == null) player.daily.arena = 0;
 }
 function dailyQuestProgress(q) {
   const base = (player.daily.baseline && player.daily.baseline[q.metric]) || 0;
@@ -111,8 +113,8 @@ function claimDailyLogin() {
   player.daily.loginClaimedDay = today;
   const r = dailyLoginReward(player.daily.streak);
   grantReward(r);
-  pushLog(`🎁 Награда за вход (день ${player.daily.streak} подряд): +${rewardLabel(r)}.`);
-  if (typeof showToast === 'function') showToast(`🎁 +${r.gold} золота!`);
+  pushLog('🎁 Награда за вход (день {streak} подряд): +{r}.', {streak:player.daily.streak, r:rewardLabel(r)});
+  if (typeof showToast === 'function') showToast(tp('🎁 +{gold} золота!', {gold:r.gold}));
   checkAchievements();
   saveGame();
   render();
@@ -124,11 +126,11 @@ function claimDailyQuest(qid) {
   if (dailyQuestProgress(q) < q.goal) { pushLog('❌ Задание ещё не выполнено.'); render(); return; }
   player.daily.questClaimed[qid] = true;
   grantReward(q.reward);
-  pushLog(`🎁 Ежедневное «${q.name}» выполнено! +${rewardLabel(q.reward)}.`);
+  pushLog('🎁 Ежедневное «{q}» выполнено! +{r}.', {q:L(q.name), r:rewardLabel(q.reward)});
   if (!player.daily.allClaimed && DAILY_QUESTS.every((x) => player.daily.questClaimed[x.id])) {
     player.daily.allClaimed = true;
     grantReward(DAILY_ALL_REWARD);
-    pushLog(`🌟 Все ежедневные выполнены! Бонус: +${rewardLabel(DAILY_ALL_REWARD)}.`);
+    pushLog('🌟 Все ежедневные выполнены! Бонус: +{r}.', {r:rewardLabel(DAILY_ALL_REWARD)});
     if (typeof showToast === 'function') showToast('🌟 Ежедневные выполнены!');
   }
   saveGame();
@@ -146,8 +148,8 @@ function checkAchievements() {
     player.achievements.push(a.id);
     if (a.reward) Object.entries(a.reward).forEach(([k, v]) => addRes(k, v));
     const rstr = a.reward ? ` Награда: ${Object.entries(a.reward).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(', ')}.` : '';
-    pushLog(`🏆 Достижение «${a.name}»!${rstr}`);
-    if (typeof showToast === 'function') showToast(`🏆 ${a.name}`);
+    pushLog('🏆 Достижение «{a}»!{rstr}', {a:L(a.name), rstr});
+    if (typeof showToast === 'function') showToast(tp('🏆 {a}', {a:L(a.name)}));
   });
 }
 
@@ -187,7 +189,7 @@ const GATHER_TABLE = [
 function gather(res) {
   const entry = GATHER_TABLE.find((g) => g.res === res);
   if (!entry) return;
-  if (!useLimit('gather', 1)) { pushLog(`⛔ Лимит добычи на час исчерпан (${limitCap('gather')}/час). Сброс через ${limitResetMins('gather')} мин.`); render(); return; }
+  if (!useLimit('gather', 1)) { pushLog('⛔ Лимит добычи на час исчерпан ({cap}/час). Сброс через {min} мин.', {cap:limitCap('gather'), min:limitResetMins('gather')}); render(); return; }
   // удача и навык дают шанс добыть больше
   let qty = rnd(1, 3);
   if (chance(player.derived.luk)) qty += rnd(1, 2);
@@ -196,8 +198,8 @@ function gather(res) {
   addRes(res, qty);
   player.counters.gathered += qty;
   gainProfXp('gathering', qty);
-  pushLog(`⛏️ ${entry.name}: +${qty} ${RESOURCES[res].name}.`);
-  if (typeof showToast === 'function') showToast(`+${qty} ${RESOURCES[res].icon} ${RESOURCES[res].name}`);
+  pushLog('⛏️ {src}: +{qty} {res}.', {src:L(entry.name), qty, res:rName(res)});
+  if (typeof showToast === 'function') showToast(tp('+{qty} {icon} {res}', {qty, icon:RESOURCES[res].icon, res:rName(res)}));
   checkQuests();
   render();
 }
@@ -212,7 +214,7 @@ function canCraft(recipe) {
 function craft(recipeId) {
   const r = RECIPES.find((x) => x.id === recipeId);
   if (!r || !canCraft(r)) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
-  if (!useLimit('craft', 1)) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
+  if (!useLimit('craft', 1)) { pushLog('⛔ Лимит производства на час исчерпан ({cap}/час). Сброс через {min} мин.', {cap:limitCap('craft'), min:limitResetMins('craft')}); render(); return; }
   _craftOnce(r, false);
   checkQuests();
   render();
@@ -235,13 +237,13 @@ function craftMax(recipeId) {
   const byRes = maxCraftable(r);
   if (byRes <= 0) { pushLog('❌ Недостаточно ресурсов для крафта.'); render(); return; }
   const left = limitRemaining('craft');
-  if (left <= 0) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
+  if (left <= 0) { pushLog('⛔ Лимит производства на час исчерпан ({cap}/час). Сброс через {min} мин.', {cap:limitCap('craft'), min:limitResetMins('craft')}); render(); return; }
   const n = Math.min(byRes, left);
   let made = 0;
   while (made < n && canCraft(r)) { _craftOnce(r, true); made++; }
   useLimit('craft', made);
   const outName = r.out.item ? r.out.item.name : RESOURCES[r.out.res].name;
-  pushLog(`🔧 Создано ×${made}: ${outName}.${made < byRes ? ` (лимит ${limitCap('craft')}/час; осталось 0)` : ''}`);
+  pushLog('🔧 Создано ×{made}: {out}.{lim}', {made, out:L(outName), lim:made < byRes ? (' (' + L('лимит') + ' ' + limitCap('craft') + '/' + L('час') + '; ' + L('осталось 0') + ')') : ''});
   checkQuests();
   render();
 }
@@ -262,15 +264,16 @@ function _craftOnce(r, quiet) {
     // мастер-плавильщик/столяр изредка получает лишнюю единицу ресурса
     if (chance((profLevel(r.ws) - 1) * 3)) qty += 1;
     addRes(r.out.res, qty);
-    if (!quiet) pushLog(`🔧 Создано: ${qty}× ${RESOURCES[r.out.res].name}.`);
+    if (!quiet) pushLog('🔧 Создано: {qty}× {res}.', {qty, res:rName(r.out.res)});
   } else if (r.out.item) {
     const item = JSON.parse(JSON.stringify(r.out.item));
     if (item.armor) item.armor = Math.round(item.armor * quality);
     if (item.dmg) item.dmg = item.dmg.map((d) => Math.round(d * quality));
+    if (item.conc) item.conc = Math.round(item.conc * quality); // концентрация зелья растёт от мастерства Алхимика
     item.durability = [1000, 1000];
     addItem(item);
     const tags = [quality >= 1.15 ? 'закал. углём' : '', mastery > 1.05 ? `мастерство ×${mastery.toFixed(2)}` : ''].filter(Boolean).join(', ');
-    if (!quiet) pushLog(`🔧 Создан предмет: ${item.name}${tags ? ` (${tags})` : ''}.`);
+    if (!quiet) pushLog('🔧 Создан предмет: {item}{tags}.', {item:L(item.name), tags:tags ? (' (' + tags + ')') : ''});
   }
   // опыт профессии: ресурсы +2, снаряжение +5, легендарное +20
   const legendary = (r.sparks || 0) >= 300;
@@ -307,13 +310,17 @@ function setCraftCost(setId) {
   if (t >= 9) cost.souls = 1;
   return cost;
 }
-// стоимость перековки до целевой рарности (target — ключ рарности)
+// стоимость перековки до целевой рарности (target — ключ рарности).
+// Души специально дороже прямой покупки в премиум-лавке (×1.5): перековка
+// сохраняет заточку и гнёзда предмета, поэтому это премиальный путь — купить
+// готовую вещь нужной рарности всегда выгоднее по Душам.
 function reforgeCost(target) {
-  const i = RARITY_ORDER.indexOf(target); // 1..5
+  const i = RARITY_ORDER.indexOf(target); // uncommon=1 … mythic=5
   const cost = { sparks: 60 * i, res: {} };
   if (i <= 2) cost.res = { metal: 2 * i, gem: i };
   else cost.res = { dragonScale: i - 1, soulGem: Math.max(1, i - 2) };
-  if (i >= 4) cost.souls = i - 3; // легендарный: 1 Душа, мифический: 2
+  const buy = (typeof PREMIUM_PIECE_PRICE !== 'undefined' && PREMIUM_PIECE_PRICE[target]) || 0;
+  cost.souls = buy ? Math.ceil(buy * 1.5) : 10 * i; // rare 45 / epic 75 / leg 105 / myth 150
   return cost;
 }
 function craftSetPiece(setId, slot) {
@@ -322,18 +329,71 @@ function craftSetPiece(setId, slot) {
   if (!player.codex || !player.codex[setId]) { pushLog('❌ Сначала найди хотя бы одну часть этого сета в походе.'); render(); return; }
   const cost = setCraftCost(setId);
   if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для ковки.'); render(); return; }
-  if (!useLimit('craft', 1)) { pushLog(`⛔ Лимит производства на час исчерпан (${limitCap('craft')}/час). Сброс через ${limitResetMins('craft')} мин.`); render(); return; }
+  if (!useLimit('craft', 1)) { pushLog('⛔ Лимит производства на час исчерпан ({cap}/час). Сброс через {min} мин.', {cap:limitCap('craft'), min:limitResetMins('craft')}); render(); return; }
   payCost(cost);
   const it = makeSetItem(setId, slot, 'common');
   addItem(it);
   const ws = ['ring', 'amulet', 'earring'].includes(slot) ? 'jewelry' : 'smithy';
   gainProfXp(ws, 8);
   player.counters.crafted += 1;
-  pushLog(`🔥 Скована часть сета: ${it.name} [Обычный].`);
+  pushLog('🔥 Скована часть сета: {item} [{rar}].', {item:L(it.name), rar:L('Обычный')});
   checkQuests();
   saveGame();
   render();
 }
+// --- Усилители (камни) и гнёзда ---
+function craftEnhancer(stat, tier) {
+  const t = GEM_TIERS[tier]; const e = ENHANCERS[stat];
+  if (!t || !e) return;
+  if ((player.resources.gem || 0) < t.gem || (player.resources.sparks || 0) < t.sparks) {
+    pushLog('❌ Нужно {gem} 💎 камней и {sparks} 🔥 искр.', {gem:t.gem, sparks:t.sparks}); render(); return;
+  }
+  spendRes('gem', t.gem); spendRes('sparks', t.sparks);
+  addItem({ name: `${e.name} ${t.rom}`, type: 'усилитель', gemStat: stat, tier, bonus: t.bonus, icon: e.icon });
+  pushLog('💎 Создан усилитель: {enh} {rom} (+{bonus} {stat}).', {enh:L(e.name), rom:t.rom, bonus:t.bonus, stat:sName(stat)});
+  player.counters.crafted += 1;
+  checkQuests(); saveGame(); render();
+}
+function openSocket(itemId) {
+  const it = findOwnedItem(itemId);
+  if (!it || !it.slot) return;
+  if (it.rented) { pushLog('🔒 Арендованную вещь нельзя изменять — только носить.'); render(); return; }
+  if (!it.sockets) it.sockets = [];
+  const n = it.sockets.length;
+  const max = maxSockets(it);
+  if (n >= max) { pushLog('❌ Больше гнёзд не просверлить (макс {max} для рарности).', {max}); render(); return; }
+  const cost = SOCKET_OPEN_COST[n] || SOCKET_OPEN_COST[SOCKET_OPEN_COST.length - 1];
+  if ((player.resources.sparks || 0) < cost) { pushLog('❌ Нужно {cost} 🔥 искр на гнездо.', {cost}); render(); return; }
+  spendRes('sparks', cost);
+  it.sockets.push(null);
+  pushLog('🛠 Просверлено гнездо {n}/{max} в «{item}» за {cost} 🔥.', {n:it.sockets.length, max, item:L(it.name), cost});
+  recalc(); saveGame(); render();
+}
+function socketGem(itemId, idx, gemId) {
+  const it = findOwnedItem(itemId);
+  if (!it || !it.sockets || it.sockets[idx] === undefined) return;
+  if (it.rented) { pushLog('🔒 Арендованную вещь нельзя изменять — только носить.'); render(); return; }
+  if (it.sockets[idx]) { pushLog('❌ Гнездо занято.'); render(); return; }
+  const gi = player.inventory.findIndex((x) => x.id === gemId && x.type === 'усилитель');
+  if (gi < 0) { render(); return; }
+  const gem = player.inventory.splice(gi, 1)[0];
+  it.sockets[idx] = { gemStat: gem.gemStat, tier: gem.tier, bonus: gem.bonus, name: gem.name, icon: gem.icon };
+  recalc();
+  pushLog('💎 «{gem}» вставлен в «{item}».', {gem:L(gem.name), item:L(it.name)});
+  saveGame(); render();
+}
+function unsocketGem(itemId, idx) {
+  const it = findOwnedItem(itemId);
+  if (!it || !it.sockets || !it.sockets[idx]) return;
+  if (it.rented) { pushLog('🔒 Арендованную вещь нельзя изменять — только носить.'); render(); return; }
+  const g = it.sockets[idx];
+  it.sockets[idx] = null;
+  addItem({ name: g.name, type: 'усилитель', gemStat: g.gemStat, tier: g.tier, bonus: g.bonus, icon: g.icon });
+  recalc();
+  pushLog('💎 «{gem}» извлечён из «{item}».', {gem:L(g.name), item:L(it.name)});
+  saveGame(); render();
+}
+
 // --- Заточка снаряжения (+1..+10): усиливает статы предмета ---
 const ENHANCE_MAX = 10;
 function enhanceCost(plus) {
@@ -359,8 +419,9 @@ function findOwnedItem(itemId) {
 function enhanceItem(itemId) {
   const it = findOwnedItem(itemId);
   if (!it || !it.slot) return;
+  if (it.rented) { pushLog('🔒 Арендованную вещь нельзя точить — только носить.'); render(); return; }
   const plus = it.plus || 0;
-  if (plus >= ENHANCE_MAX) { pushLog(`❌ Максимальная заточка (+${ENHANCE_MAX}).`); render(); return; }
+  if (plus >= ENHANCE_MAX) { pushLog('❌ Максимальная заточка (+{max}).', {max:ENHANCE_MAX}); render(); return; }
   const cost = enhanceCost(plus);
   if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для заточки.'); render(); return; }
   payCost(cost);
@@ -374,7 +435,7 @@ function enhanceItem(itemId) {
   it.plus = plus + 1;
   recomputeEnhanced(it);
   recalc();
-  pushLog(`⚒️ Заточка: ${it.name} +${it.plus}!`);
+  pushLog('⚒️ Заточка: {item} +{plus}!', {item:L(it.name), plus:it.plus});
   checkAchievements();
   saveGame();
   render();
@@ -399,11 +460,12 @@ function reforgeItem(itemId) {
     fresh.plus = it.plus;
     recomputeEnhanced(fresh);
   }
+  if (it.sockets) fresh.sockets = it.sockets; // переносим гнёзда и вставленные камни
   player.inventory[i] = fresh;
   recordCodex(fresh);
   recalc();
   gainProfXp('jewelry', 6);
-  pushLog(`🔨 Перековка: ${fresh.name}${fresh.plus ? ` +${fresh.plus}` : ''} → [${RARITIES[target].name}]!`);
+  pushLog('🔨 Перековка: {item}{plus} → [{rar}]!', {item:L(fresh.name), plus:fresh.plus ? (' +' + fresh.plus) : '', rar:L(RARITIES[target].name)});
   saveGame();
   render();
 }
@@ -416,7 +478,7 @@ function equipItem(itemId) {
   // бижутерии/брони и бонуса клана), чтобы можно было «добрать» статы вещами
   if (it.req) {
     for (const [k, v] of Object.entries(it.req)) {
-      if (statTotal(k) < v) { pushLog(`❌ Требуется ${STATS[k].name} ${v} для «${it.name}» (у вас ${statTotal(k)}).`); render(); return; }
+      if (statTotal(k) < v) { pushLog('❌ Требуется {stat} {v} для «{item}» (у вас {have}).', {stat:sName(k), v, item:L(it.name), have:statTotal(k)}); render(); return; }
     }
   }
   const prev = player.equip[it.slot];
@@ -424,7 +486,7 @@ function equipItem(itemId) {
   player.inventory = player.inventory.filter((x) => x.id !== it.id);
   if (prev) player.inventory.push(prev);
   recalc();
-  pushLog(`🎽 Надето: ${it.name}.`);
+  pushLog('🎽 Надето: {item}.', {item:L(it.name)});
   render();
 }
 // --- Сборки экипировки (лоадауты): сохранить текущий комплект и быстро надевать ---
@@ -435,9 +497,9 @@ function saveLoadout(name) {
   Object.entries(player.equip).forEach(([slot, it]) => { if (it) items[slot] = it.id; });
   if (!Object.keys(items).length) { pushLog('❌ Нечего сохранять — экипировка пуста.'); render(); return; }
   if (!player.loadouts) player.loadouts = [];
-  if (player.loadouts.length >= LOADOUT_MAX) { pushLog(`❌ Лимит сборок (${LOADOUT_MAX}). Удалите лишнюю.`); render(); return; }
+  if (player.loadouts.length >= loadoutMax()) { pushLog('❌ Лимит сборок ({max}). Удалите лишнюю.', {max:loadoutMax()}); render(); return; }
   player.loadouts.push({ name, items });
-  pushLog(`💾 Сборка «${name}» сохранена.`);
+  pushLog('💾 Сборка «{name}» сохранена.', {name});
   checkAchievements();
   saveGame();
   render();
@@ -466,12 +528,12 @@ function equipBestSet(setId) {
     newEquip[slot] = cands[0];
     picked++;
   });
-  if (!picked) { pushLog(`❌ Нет частей сета «${set.name}» в наличии.`); render(); return; }
+  if (!picked) { pushLog('❌ Нет частей сета «{set}» в наличии.', {set:L(set.name)}); render(); return; }
   const equippedIds = new Set(Object.values(newEquip).filter(Boolean).map((x) => x.id));
   player.equip = newEquip;
   player.inventory = pool.filter((x) => !equippedIds.has(x.id));
   recalc();
-  pushLog(`🎽 Надет комплект «${set.name}» — лучшие части (${picked}/${slots.length}).`);
+  pushLog('🎽 Надет комплект «{set}» — лучшие части ({picked}/{total}).', {set:L(set.name), picked, total:slots.length});
   saveGame();
   render();
 }
@@ -492,14 +554,14 @@ function applyLoadout(idx) {
   player.equip = newEquip;
   player.inventory = pool.filter((x) => !equippedIds.has(x.id));
   recalc();
-  pushLog(`🎽 Надета сборка «${lo.name}»${missing ? ` (${missing} предметов уже нет)` : ''}.`);
+  pushLog('🎽 Надета сборка «{name}»{missing}.', {name:lo.name, missing:missing ? (' (' + missing + ' ' + L('предметов уже нет') + ')') : ''});
   saveGame();
   render();
 }
 function deleteLoadout(idx) {
   if (!player.loadouts || !player.loadouts[idx]) return;
   const [removed] = player.loadouts.splice(idx, 1);
-  pushLog(`🗑 Сборка «${removed.name}» удалена.`);
+  pushLog('🗑 Сборка «{name}» удалена.', {name:removed.name});
   saveGame();
   render();
 }
@@ -513,8 +575,91 @@ function unequip(slot) {
   render();
 }
 function dropItem(itemId) {
+  const it = player.inventory.find((x) => x.id === itemId);
+  if (it && it.rented) { pushLog('🔒 Арендованную вещь нельзя выбросить — верните её в арсенал.'); render(); return; }
   player.inventory = player.inventory.filter((x) => x.id !== itemId);
   render();
+}
+
+// ---------------- Питомцы (Приручение) ----------------
+function togglePetActive(id) {
+  const p = (player.pets || []).find((x) => x.id === id);
+  if (!p) return;
+  if (!p.active) {
+    const n = player.pets.filter((x) => x.active).length;
+    if (n >= activePetCap()) { pushLog('🐾 Лимит активных питомцев ({cap}). Поднимайте навык Приручение.', {cap:activePetCap()}); render(); return; }
+  }
+  p.active = !p.active;
+  saveGame(); render();
+}
+function releasePet(id) {
+  if (typeof confirm === 'function' && !confirm('Отпустить питомца на волю?')) return;
+  player.pets = (player.pets || []).filter((x) => x.id !== id);
+  pushLog('🐾 Питомец отпущен на волю.');
+  saveGame(); render();
+}
+
+// ---------------- Гильдия магов ----------------
+function elementSum() { return ELEMENTS.reduce((a, e) => a + (player.elements[e] || 0), 0); }
+function mageRank() { return mageRankIdx(elementSum()); }
+
+function joinMageGuild() {
+  if (player.mageGuild) return;
+  if (!hasRes('gold', MAGE_GUILD_FEE)) { pushLog('❌ Нужно {n} 🪙 на членский взнос.', {n:MAGE_GUILD_FEE}); render(); return; }
+  spendRes('gold', MAGE_GUILD_FEE);
+  player.mageGuild = true;
+  pushLog('🔮 Вы вступили в Гильдию магов!');
+  checkAchievements(); saveGame(); render();
+}
+
+function upgradeSpell(id) {
+  if (!player.mageGuild) { pushLog('🔮 Сначала вступите в Гильдию магов.'); render(); return; }
+  if (!player.spells.includes(id)) return;
+  const plus = player.spellPlus[id] || 0;
+  const cap = spellUpgradeCap(mageRank());
+  if (plus >= cap) { pushLog('❌ Для вашего ранга максимум улучшения +{cap}. Поднимайте уровни стихий.', {cap}); render(); return; }
+  const cost = spellUpgradeCost(plus);
+  if (!hasRes('gold', cost.gold) || !hasRes('sparks', cost.sparks) || !hasRes('gem', cost.gem)) {
+    pushLog('❌ Нужно {gold}🪙 + {sparks}🔥 + {gem}💎.', {gold:cost.gold, sparks:cost.sparks, gem:cost.gem}); render(); return;
+  }
+  spendRes('gold', cost.gold); spendRes('sparks', cost.sparks); spendRes('gem', cost.gem);
+  player.spellPlus[id] = plus + 1;
+  const s = SPELLS.find((x) => x.id === id);
+  pushLog('🔮 «{spell}» улучшено до +{plus}.', {spell:L(s ? s.name : id), plus:plus + 1});
+  saveGame(); render();
+}
+
+function learnSpell(id) {
+  if (!player.mageGuild) { pushLog('🔮 Сначала вступите в Гильдию магов.'); render(); return; }
+  if (player.spells.includes(id)) return;
+  const def = SPELL_LEARN[id]; if (!def) return;
+  if (mageRank() < def.rank) { pushLog('❌ Нужен ранг «{rank}» — поднимайте уровни стихий.', {rank:L(MAGE_RANKS[def.rank])}); render(); return; }
+  if (!hasRes('gold', def.gold) || !hasRes('sparks', def.sparks)) { pushLog('❌ Нужно {gold}🪙 + {sparks}🔥.', {gold:def.gold, sparks:def.sparks}); render(); return; }
+  spendRes('gold', def.gold); spendRes('sparks', def.sparks);
+  player.spells.push(id);
+  const s = SPELLS.find((x) => x.id === id);
+  pushLog('📜 Изучено заклинание «{spell}»!', {spell:L(s ? s.name : id)});
+  checkAchievements(); saveGame(); render();
+}
+
+// --- Прочность и ремонт ---
+function repairCost(it) {
+  if (!it || !it.durability) return null;
+  const miss = it.durability[1] - it.durability[0];
+  if (miss <= 0) return null;
+  const rr = it.rarity ? (RARITY_ORDER.indexOf(it.rarity) + 1) : 1;
+  return { gold: Math.max(1, Math.ceil(miss / 8) * rr), sparks: Math.max(0, Math.ceil(miss / 40) * rr) };
+}
+function repairItem(itemId) {
+  const it = findOwnedItem(itemId);
+  if (!it || !it.durability) return;
+  const cost = repairCost(it);
+  if (!cost) { render(); return; }
+  if (!hasRes('gold', cost.gold) || (cost.sparks && !hasRes('sparks', cost.sparks))) { pushLog('❌ Недостаточно ресурсов для починки.'); render(); return; }
+  spendRes('gold', cost.gold); if (cost.sparks) spendRes('sparks', cost.sparks);
+  it.durability[0] = it.durability[1];
+  pushLog('🔧 «{item}» починено (−{gold} 🪙{sparks}).', {item:L(it.name), gold:cost.gold, sparks:cost.sparks ? (' −' + cost.sparks + ' 🔥') : ''});
+  recalc(); saveGame(); render();
 }
 
 // --- Магазин (раздел «Магазин») ---
@@ -528,7 +673,7 @@ function buyRes(res, qty) {
   const cost = g.price * qty;
   if (!hasRes('gold', cost)) { pushLog('🪙 Недостаточно золота.'); render(); return; }
   spendRes('gold', cost); addRes(res, qty);
-  pushLog(`🛒 Куплено ${qty}× ${RESOURCES[res].name} за ${cost} золота.`);
+  pushLog('🛒 Куплено {qty}× {res} за {cost} золота.', {qty, res:rName(res), cost});
   render();
 }
 function sellRes(res, qty) {
@@ -536,7 +681,7 @@ function sellRes(res, qty) {
   const g = SHOP_GOODS.find((x) => x.res === res);
   const price = g ? Math.ceil(g.price / 2) : 1;
   spendRes(res, qty); addRes('gold', price * qty);
-  pushLog(`💰 Продано ${qty}× ${RESOURCES[res].name} за ${price * qty} золота.`);
+  pushLog('💰 Продано {qty}× {res} за {sum} золота.', {qty, res:rName(res), sum:price * qty});
   checkQuests();
   render();
 }
@@ -555,7 +700,57 @@ function buyGear(recipeId) {
   const item = JSON.parse(JSON.stringify(r.out.item));
   item.durability = [1000, 1000];
   addItem(item);
-  pushLog(`🛒 Куплено снаряжение: ${item.name} за ${price} 🪙.`);
+  pushLog('🛒 Куплено снаряжение: {item} за {price} 🪙.', {item:L(item.name), price});
+  render();
+}
+
+// --- Премиум-аккаунт (Фаза 3) ---
+function isPremium() { return (player.premiumUntil || 0) > Date.now(); }
+function extendPremium(days) {
+  const base = Math.max(Date.now(), player.premiumUntil || 0);
+  player.premiumUntil = base + days * 86400000;
+}
+function arenaDailyLimit() { return isPremium() ? 100 : ARENA_DAILY_LIMIT; }
+function loadoutMax() { return isPremium() ? LOADOUT_MAX + 3 : LOADOUT_MAX; }
+function buyPremiumAccountSouls() {
+  if (!hasRes('souls', PREMIUM_SOULS)) { if (typeof showToast === 'function') showToast(t('👻 Недостаточно Душ для покупки.')); return; }
+  spendRes('souls', PREMIUM_SOULS);
+  extendPremium(PREMIUM_DAYS);
+  if (typeof showToast === 'function') showToast(t('👑 Премиум-аккаунт активирован!'));
+  saveGame();
+  render();
+}
+
+// --- Премиум-лавка (Фаза 2): сетовые предметы за Души ---
+function buyPremiumPiece(setId, slot) {
+  const set = GEAR_SETS[setId];
+  const rarity = premiumRarity;
+  if (!set || !set.pieces[slot] || !PREMIUM_RARITIES.includes(rarity)) return;
+  const price = PREMIUM_PIECE_PRICE[rarity];
+  if (!hasRes('souls', price)) { if (typeof showToast === 'function') showToast(t('👻 Недостаточно Душ для покупки.')); return; }
+  spendRes('souls', price);
+  const item = makeSetItem(setId, slot, rarity);
+  item.durability = [1000, 1000];
+  addItem(item);
+  pushLog('🛒 Куплено: {item} за {souls} 👻.', { item: L(item.name), souls: price });
+  saveGame();
+  render();
+}
+
+function buyPremiumSet(setId) {
+  const set = GEAR_SETS[setId];
+  const rarity = premiumRarity;
+  if (!set || !PREMIUM_RARITIES.includes(rarity)) return;
+  const price = premiumSetPrice(setId, rarity);
+  if (!hasRes('souls', price)) { if (typeof showToast === 'function') showToast(t('👻 Недостаточно Душ для покупки.')); return; }
+  spendRes('souls', price);
+  Object.keys(set.pieces).forEach((slot) => {
+    const item = makeSetItem(setId, slot, rarity);
+    item.durability = [1000, 1000];
+    addItem(item);
+  });
+  pushLog('🛒 Куплен сет «{set}» за {souls} 👻.', { set: L(set.name), souls: price });
+  saveGame();
   render();
 }
 
@@ -582,14 +777,14 @@ function _tavernBank(delta) {
 
 // Кости: ставка, 2d6 игрока против 2d6 заведения. Больше — выигрыш ×2, ничья — возврат.
 function playDice(bet) {
-  if (!hasRes('gold', bet)) { tavernResult = '🪙 Недостаточно золота для ставки.'; render(); return; }
+  if (!hasRes('gold', bet)) { tavernResult = L('🪙 Недостаточно золота для ставки.'); render(); return; }
   spendRes('gold', bet);
   const me = rnd(1, 6) + rnd(1, 6);
   const house = rnd(1, 6) + rnd(1, 6);
   let net;
-  if (me > house) { addRes('gold', bet * 2); net = bet; tavernResult = `🎲 Ты ${me} против ${house} — победа! +${bet} 🪙`; }
-  else if (me === house) { addRes('gold', bet); net = 0; tavernResult = `🎲 Ничья ${me}:${house} — ставка возвращена.`; }
-  else { net = -bet; tavernResult = `🎲 Ты ${me} против ${house} — проигрыш. −${bet} 🪙`; }
+  if (me > house) { addRes('gold', bet * 2); net = bet; tavernResult = tp('🎲 Ты {me} против {house} — победа! +{bet} 🪙', {me, house, bet}); }
+  else if (me === house) { addRes('gold', bet); net = 0; tavernResult = tp('🎲 Ничья {me}:{house} — ставка возвращена.', {me, house}); }
+  else { net = -bet; tavernResult = tp('🎲 Ты {me} против {house} — проигрыш. −{bet} 🪙', {me, house, bet}); }
   _tavernBank(net);
   pushLog(tavernResult);
   checkQuests();
@@ -598,12 +793,12 @@ function playDice(bet) {
 
 // Напёрстки: выбери 1 из 3, шарик под случайным. Угадал — выигрыш ×3.
 function playThimbles(pick, bet) {
-  if (!hasRes('gold', bet)) { tavernResult = '🪙 Недостаточно золота для ставки.'; render(); return; }
+  if (!hasRes('gold', bet)) { tavernResult = L('🪙 Недостаточно золота для ставки.'); render(); return; }
   spendRes('gold', bet);
   const ball = rnd(0, 2);
   let net;
-  if (pick === ball) { addRes('gold', bet * 3); net = bet * 2; tavernResult = `🥤 Шарик под №${ball + 1} — угадал! +${bet * 2} 🪙`; }
-  else { net = -bet; tavernResult = `🥤 Шарик был под №${ball + 1}, ты выбрал №${pick + 1}. −${bet} 🪙`; }
+  if (pick === ball) { addRes('gold', bet * 3); net = bet * 2; tavernResult = tp('🥤 Шарик под №{n} — угадал! +{win} 🪙', {n:ball + 1, win:bet * 2}); }
+  else { net = -bet; tavernResult = tp('🥤 Шарик был под №{ball}, ты выбрал №{pick}. −{bet} 🪙', {ball:ball + 1, pick:pick + 1, bet}); }
   _tavernBank(net);
   pushLog(tavernResult);
   checkQuests();
@@ -613,15 +808,15 @@ function playThimbles(pick, bet) {
 // Лотерея: билет за фикс. цену, взвешенная таблица призов (вкл. редкую Душу).
 const LOTTERY_PRICE = 50;
 function playLottery() {
-  if (!hasRes('gold', LOTTERY_PRICE)) { tavernResult = `🪙 Билет стоит ${LOTTERY_PRICE} золота.`; render(); return; }
+  if (!hasRes('gold', LOTTERY_PRICE)) { tavernResult = tp('🪙 Билет стоит {price} золота.', {price:LOTTERY_PRICE}); render(); return; }
   spendRes('gold', LOTTERY_PRICE);
   const roll = Math.random() * 100;
   let net = -LOTTERY_PRICE;
-  if (roll < 55) { tavernResult = '🎟️ Пусто. Удача отвернулась.'; }
-  else if (roll < 80) { addRes('gold', 50); net += 50; tavernResult = '🎟️ Мелкий выигрыш: +50 🪙'; }
-  else if (roll < 94) { addRes('gold', 150); net += 150; tavernResult = '🎟️ Неплохо: +150 🪙'; }
-  else if (roll < 98.5) { addRes('sparks', 200); tavernResult = '🎟️ Джекпот искр: +200 🔥'; }
-  else { addRes('souls', 1); tavernResult = '🎟️ 💎 СУПЕРПРИЗ: +1 Душа!'; }
+  if (roll < 55) { tavernResult = L('🎟️ Пусто. Удача отвернулась.'); }
+  else if (roll < 80) { addRes('gold', 50); net += 50; tavernResult = L('🎟️ Мелкий выигрыш: +50 🪙'); }
+  else if (roll < 94) { addRes('gold', 150); net += 150; tavernResult = L('🎟️ Неплохо: +150 🪙'); }
+  else if (roll < 98.5) { addRes('sparks', 200); tavernResult = L('🎟️ Джекпот искр: +200 🔥'); }
+  else { addRes('souls', 1); tavernResult = L('🎟️ 💎 СУПЕРПРИЗ: +1 Душа!'); }
   _tavernBank(net);
   pushLog(tavernResult);
   if (typeof showToast === 'function') showToast(tavernResult);
@@ -665,8 +860,8 @@ function collectLower() {
   entries.forEach(([res, qty]) => addRes(res, qty));
   player.lowerWorld.lastCollect = Date.now();
   const str = entries.map(([res, qty]) => `${qty} ${RESOURCES[res].icon}`).join(', ');
-  pushLog(`🏘️ Собран урожай нижнего мира: ${str}.`);
-  if (typeof showToast === 'function') showToast(`🏘️ Собрано: ${str}`);
+  pushLog('🏘️ Собран урожай нижнего мира: {str}.', {str});
+  if (typeof showToast === 'function') showToast(tp('🏘️ Собрано: {str}', {str}));
   checkQuests();
   render();
 }
@@ -691,8 +886,8 @@ function lowerTick() {
   if (Date.now() >= c.finishAt) {
     player.lowerWorld.buildings[c.key] = c.targetLvl;
     player.lowerWorld.construction = null;
-    pushLog(`🏗️ ${LOWER_BUILDINGS[c.key].name} достроен до уровня ${c.targetLvl}!`);
-    if (typeof showToast === 'function') showToast(`🏗️ ${LOWER_BUILDINGS[c.key].name} ур.${c.targetLvl} готов!`);
+    pushLog('🏗️ {b} достроен до уровня {lvl}!', {b:L(LOWER_BUILDINGS[c.key].name), lvl:c.targetLvl});
+    if (typeof showToast === 'function') showToast(tp('🏗️ {b} ур.{lvl} готов!', {b:L(LOWER_BUILDINGS[c.key].name), lvl:c.targetLvl}));
     return true;
   }
   return false;
@@ -710,7 +905,7 @@ function canBuildLower(key) {
 }
 function startLowerBuild(key) {
   const chk = canBuildLower(key);
-  if (!chk.ok) { pushLog(`🏗️ Нельзя строить: ${chk.why}.`); render(); return; }
+  if (!chk.ok) { pushLog('🏗️ Нельзя строить: {why}.', {why:chk.why}); render(); return; }
   const cost = upgradeLowerCost(key);
   const target = (player.lowerWorld.buildings[key] || 0) + 1;
   // фиксируем накопленный урожай, чтобы не потерять при смене состояния
@@ -720,7 +915,7 @@ function startLowerBuild(key) {
   spendRes('gold', cost);
   const dur = lowerBuildSeconds(target) * 1000;
   player.lowerWorld.construction = { key, targetLvl: target, startAt: Date.now(), finishAt: Date.now() + dur };
-  pushLog(`🏗️ Начата стройка: ${LOWER_BUILDINGS[key].name} → ур. ${target} (${fmtDuration(dur / 1000)}). Списано ${cost} 🪙.`);
+  pushLog('🏗️ Начата стройка: {b} → ур. {lvl} ({dur}). Списано {cost} 🪙.', {b:L(LOWER_BUILDINGS[key].name), lvl:target, dur:fmtDuration(dur / 1000), cost});
   saveGame();
   render();
 }
@@ -735,7 +930,7 @@ function rushLowerBuild() {
   const c = player.lowerWorld.construction;
   if (!c) return;
   const cost = lowerRushCost();
-  if (!hasRes('souls', cost)) { pushLog(`👻 Нужно ${cost} Душ для ускорения.`); render(); return; }
+  if (!hasRes('souls', cost)) { pushLog('👻 Нужно {cost} Душ для ускорения.', {cost}); render(); return; }
   spendRes('souls', cost);
   c.finishAt = Date.now();
   lowerTick();
@@ -746,14 +941,15 @@ function rushLowerBuild() {
 function fmtDuration(sec) {
   sec = Math.max(0, Math.round(sec));
   const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  if (d) return `${d}д ${h}ч`;
-  if (h) return `${h}ч ${m}м`;
-  if (m) return `${m}м ${s}с`;
-  return `${s}с`;
+  if (d) return `${d}${t('д')} ${h}${t('ч')}`;
+  if (h) return `${h}${t('ч')} ${m}${t('м')}`;
+  if (m) return `${m}${t('м')} ${s}${t('с')}`;
+  return `${s}${t('с')}`;
 }
 
 // --- Походы: выбор мира → локации → бой ---
 function startExpedition(worldIdx, locIdx, difficulty) {
+  if (!worldUnlocked(player, worldIdx)) { pushLog('🔒 Этот мир ещё закрыт — нужен уровень и зачистка предыдущего мира.'); render(); return; }
   const world = WORLDS[worldIdx];
   const loc = world.locations[locIdx];
   const names = loc[1];
