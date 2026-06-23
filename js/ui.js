@@ -2002,7 +2002,7 @@ function viewTavern() {
 function viewBank() {
   return `<div class="panel">
     <h2>🏛️ Банк</h2>
-    <p class="muted">Души — премиум-валюта (реальные средства по GDD). Здесь их можно обменять.</p>
+    <p class="muted">Души — премиум-валюта. Здесь их можно обменять.</p>
     <div class="kv big-kv"><span>👻 Души</span><b>${player.resources.souls || 0}</b></div>
     <button class="big" onclick="exchangeSouls('gold')">1 Душа → 1000 🪙 Золота</button>
     <button class="big" onclick="exchangeSouls('sparks')">1 Душа → 1000 🔥 Искр</button>
