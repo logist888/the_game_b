@@ -7,6 +7,7 @@ let LANG = (function () { try { return localStorage.getItem('babylon_lang'); } c
 
 const I18N = {
   en: {
+    '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': '<b>Where to get set pieces.</b> Only two ways: they drop on expeditions, or are bought for Souls in the Shop (the "For souls" tab). There is no forging of set pieces.',
     // --- HUD / общий каркас ---
     'Уровень': 'Level',
     'опасность': 'danger',

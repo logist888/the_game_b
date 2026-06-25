@@ -1,5 +1,6 @@
 // Локализация: итальянский (it). Ключи = русский исходник. Порядок = эталон en.
 I18N.it = {
+  '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': "<b>Dove ottenere i pezzi del set.</b> Solo due modi: cadono nelle spedizioni o si comprano con le Anime nel Negozio (scheda «Per anime»). Non esiste la forgiatura dei pezzi del set.",
   // --- Барахолка за души ---
   'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': "Il mercatino è diviso in due schede: «Per monete» (oggetti e risorse comuni) e «Per anime» (oggetti del set). Per le anime la commissione è più alta — 10%.",
   'За монеты': "Per monete",

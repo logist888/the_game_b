@@ -1,5 +1,6 @@
 // Локализация: испанский (es). Ключи = русский исходник. Порядок = эталон en.
 I18N.es = {
+  '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': '<b>Dónde conseguir piezas de conjunto.</b> Solo dos formas: caen en las expediciones o se compran por Almas en la Tienda (pestaña «Por almas»). No hay forja de piezas de conjunto.',
   // --- Барахолка за души ---
   'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': 'El mercadillo se divide en dos pestañas: «Por monedas» (objetos y recursos comunes) y «Por almas» (objetos de set). Por almas la comisión es mayor — 10%.',
   'За монеты': 'Por monedas',

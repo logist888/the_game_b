@@ -1,5 +1,6 @@
 // Локализация: немецкий (de). Ключи = русский исходник. Порядок = эталон en.
 I18N.de = {
+  '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': '<b>Woher Set-Teile.</b> Nur zwei Wege: Sie droppen auf Expeditionen oder werden für Seelen im Laden gekauft (Reiter „Für Seelen“). Set-Teile lassen sich nicht schmieden.',
   // --- Барахолка за души ---
   'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': 'Der Marktplatz ist in zwei Reiter unterteilt: „Für Münzen" (gewöhnliche Gegenstände und Ressourcen) und „Für Seelen" (Set-Gegenstände). Für Seelen ist die Provision höher — 10%.',
   'За монеты': 'Für Münzen',

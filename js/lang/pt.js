@@ -1,5 +1,6 @@
 // Локализация: португальский (pt). Ключи = русский исходник. Порядок = эталон en.
 I18N.pt = {
+  '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': '<b>Onde obter peças de conjunto.</b> Apenas dois jeitos: caem nas expedições ou são compradas por Almas na Loja (aba «Por almas»). Não há forja de peças de conjunto.',
   // --- Барахолка за души ---
   'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': 'O mercado tem duas abas: «Por moedas» (itens e recursos comuns) e «Por almas» (itens de conjunto). Por almas a comissão é maior — 10%.',
   'За монеты': 'Por moedas',

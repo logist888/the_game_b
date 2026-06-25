@@ -281,7 +281,7 @@ function _craftOnce(r, quiet) {
   player.counters.crafted += 1;
 }
 
-// --- Кузница сетов: ковка частей и перековка рарности ---
+// --- Общие помощники стоимости (используются заточкой и др.) ---
 function canAfford(cost) {
   if (cost.sparks && (player.resources.sparks || 0) < cost.sparks) return false;
   if (cost.souls && (player.resources.souls || 0) < cost.souls) return false;
@@ -299,47 +299,6 @@ function costLabel(cost) {
   if (cost.sparks) parts.push(`🔥${cost.sparks}`);
   if (cost.souls) parts.push(`👻${cost.souls}`);
   return parts.join(' ');
-}
-// стоимость ковки части сета зависит от minTier комплекта
-function setCraftCost(setId) {
-  const t = GEAR_SETS[setId].minTier || 1;
-  const cost = { sparks: 50 + t * 20, res: {} };
-  if (t <= 3) cost.res = { metal: 3, cloth: 2, gem: 2 };
-  else if (t <= 6) cost.res = { metal: 5, gem: 3, dragonScale: 1 };
-  else cost.res = { hellSteel: 3, soulGem: 2, starCrystal: 2 };
-  if (t >= 9) cost.souls = 1;
-  return cost;
-}
-// стоимость перековки до целевой рарности (target — ключ рарности).
-// Души специально дороже прямой покупки в премиум-лавке (×1.5): перековка
-// сохраняет заточку и гнёзда предмета, поэтому это премиальный путь — купить
-// готовую вещь нужной рарности всегда выгоднее по Душам.
-function reforgeCost(target) {
-  const i = RARITY_ORDER.indexOf(target); // uncommon=1 … mythic=5
-  const cost = { sparks: 60 * i, res: {} };
-  if (i <= 2) cost.res = { metal: 2 * i, gem: i };
-  else cost.res = { dragonScale: i - 1, soulGem: Math.max(1, i - 2) };
-  const buy = (typeof PREMIUM_PIECE_PRICE !== 'undefined' && PREMIUM_PIECE_PRICE[target]) || 0;
-  cost.souls = buy ? Math.ceil(buy * 1.5) : 10 * i; // rare 45 / epic 75 / leg 105 / myth 150
-  return cost;
-}
-function craftSetPiece(setId, slot) {
-  const set = GEAR_SETS[setId];
-  if (!set || !set.pieces[slot]) return;
-  if (!player.codex || !player.codex[setId]) { pushLog('❌ Сначала найди хотя бы одну часть этого сета в походе.'); render(); return; }
-  const cost = setCraftCost(setId);
-  if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для ковки.'); render(); return; }
-  if (!useLimit('craft', 1)) { pushLog('⛔ Лимит производства на час исчерпан ({cap}/час). Сброс через {min} мин.', {cap:limitCap('craft'), min:limitResetMins('craft')}); render(); return; }
-  payCost(cost);
-  const it = makeSetItem(setId, slot, 'common');
-  addItem(it);
-  const ws = ['ring', 'amulet', 'earring'].includes(slot) ? 'jewelry' : 'smithy';
-  gainProfXp(ws, 8);
-  player.counters.crafted += 1;
-  pushLog('🔥 Скована часть сета: {item} [{rar}].', {item:L(it.name), rar:L('Обычный')});
-  checkQuests();
-  saveGame();
-  render();
 }
 // --- Усилители (камни) и гнёзда ---
 function craftEnhancer(stat, tier) {
@@ -437,35 +396,6 @@ function enhanceItem(itemId) {
   recalc();
   pushLog('⚒️ Заточка: {item} +{plus}!', {item:L(it.name), plus:it.plus});
   checkAchievements();
-  saveGame();
-  render();
-}
-
-function reforgeItem(itemId) {
-  const i = player.inventory.findIndex((x) => x.id === itemId);
-  if (i < 0) return;
-  const it = player.inventory[i];
-  if (!it.set) return;
-  const idx = RARITY_ORDER.indexOf(it.rarity || 'common');
-  if (idx >= RARITY_ORDER.length - 1) { pushLog('❌ Уже максимальная рарность (Мифический).'); render(); return; }
-  const target = RARITY_ORDER[idx + 1];
-  const cost = reforgeCost(target);
-  if (!canAfford(cost)) { pushLog('❌ Недостаточно ресурсов для перековки.'); render(); return; }
-  payCost(cost);
-  const fresh = makeSetItem(it.set, it.slot, target);
-  fresh.id = it.id; // сохраняем тот же id
-  // переносим уровень заточки на новую (более редкую) базу
-  if (it.plus) {
-    fresh.baseStats = { dmg: fresh.dmg ? [...fresh.dmg] : null, armor: fresh.armor != null ? fresh.armor : null, bonus: fresh.bonus ? { ...fresh.bonus } : null };
-    fresh.plus = it.plus;
-    recomputeEnhanced(fresh);
-  }
-  if (it.sockets) fresh.sockets = it.sockets; // переносим гнёзда и вставленные камни
-  player.inventory[i] = fresh;
-  recordCodex(fresh);
-  recalc();
-  gainProfXp('jewelry', 6);
-  pushLog('🔨 Перековка: {item}{plus} → [{rar}]!', {item:L(fresh.name), plus:fresh.plus ? (' +' + fresh.plus) : '', rar:L(RARITIES[target].name)});
   saveGame();
   render();
 }

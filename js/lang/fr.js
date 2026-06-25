@@ -1,5 +1,6 @@
 // Локализация: французский (fr). Ключи = русский исходник. Порядок = эталон en.
 I18N.fr = {
+  '<b>Где взять сетовые части.</b> Только два пути: выпадают в походах (дроп) или покупаются за Души в Магазине (вкладка «За души»). Ковки сетовых частей нет.': "<b>Où obtenir les pièces d'ensemble.</b> Deux moyens seulement : elles tombent en expédition ou s'achètent contre des Âmes dans la Boutique (onglet « Pour âmes »). Il n'y a pas de forge des pièces d'ensemble.",
   // --- Барахолка за души ---
   'Барахолка делится на две вкладки: «За монеты» (обычные вещи и ресурсы) и «За души» (сетовые предметы). За души комиссия выше — 10%.': "La brocante se divise en deux onglets : « Contre des pièces » (objets ordinaires et ressources) et « Contre des âmes » (objets d'ensemble). Pour les âmes, la commission est plus élevée — 10 %.",
   'За монеты': "Contre des pièces",

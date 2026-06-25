@@ -15,7 +15,6 @@ let bagTab = 'weapon';        // подтаб рюкзака: weapon | armor | j
 let councilTab = 'quests';    // Совет старейшин: quests | ach | fame
 let shopTab = 'res';          // Магазин: res (за ресурсы) | souls (за души)
 let premiumRarity = 'epic';   // премиум-лавка: выбранная рарность
-let forgeTab = 'craft';       // Кузница сетов: craft (ковка) | reforge (перековка)
 let clansList = [];
 let clansLoaded = false;
 let clanBusy = false;
@@ -1005,83 +1004,10 @@ function viewWorkshops() {
     <p class="muted">Переработка ресурсов 1→2 уровня и создание снаряжения. Уголь как топливо повышает качество (закалка).</p>
     ${limitBadge('craft')}
     ${resInventory()}
-    ${setsForgeHtml()}
     ${cats.map(([t, rs]) => `<h3>${t}</h3><div class="recipe-grid">${rs.map(recipeCard).join('')}</div>`).join('')}
   </div>`;
 }
 
-const FORGE_SLOT_ICONS = { weapon:'⚔️', head:'🪖', body:'🛡', shield:'🔰', ring:'💍', amulet:'📿', earring:'✨' };
-// «было → будет» для перековки: считает статы целевой рарности (с учётом заточки).
-function reforgeDelta(it) {
-  const idx = RARITY_ORDER.indexOf(it.rarity || 'common');
-  if (idx >= RARITY_ORDER.length - 1) return '';
-  const target = RARITY_ORDER[idx + 1];
-  const fresh = makeSetItem(it.set, it.slot, target);
-  if (it.plus) {
-    fresh.baseStats = { dmg: fresh.dmg ? [...fresh.dmg] : null, armor: fresh.armor != null ? fresh.armor : null, bonus: fresh.bonus ? { ...fresh.bonus } : null };
-    fresh.plus = it.plus;
-    recomputeEnhanced(fresh);
-  }
-  const parts = [];
-  if (it.dmg && fresh.dmg) parts.push(`${t('урон')} ${it.dmg[0]}–${it.dmg[1]} → <b>${fresh.dmg[0]}–${fresh.dmg[1]}</b>`);
-  if (it.armor != null && fresh.armor != null) parts.push(`${t('броня')} ${it.armor} → <b>${fresh.armor}</b>`);
-  if (it.bonus && fresh.bonus) Object.keys(fresh.bonus).forEach((k) => parts.push(`${sName(k)} +${it.bonus[k] || 0}→<b>+${fresh.bonus[k]}</b>`));
-  return parts.join(' · ');
-}
-function setsForgeHtml() {
-  const discovered = Object.keys(player.codex || {});
-  // ковка недостающих частей найденных сетов
-  let craftHtml;
-  if (!discovered.length) {
-    craftHtml = '<p class="muted">Найди в походах хотя бы одну часть любого сета — и сможешь сковать остальные его части здесь.</p>';
-  } else {
-    craftHtml = discovered.map((id) => {
-      const set = GEAR_SETS[id];
-      if (!set) return '';
-      const cost = setCraftCost(id);
-      const aff = canAfford(cost);
-      const firstSlot = Object.keys(set.pieces)[0];
-      const thumb = itemArt(makeSetItem(id, firstSlot, 'common'));
-      const slotBtns = Object.keys(set.pieces).map((slot) =>
-        `<button class="mini" ${aff ? '' : 'disabled'} title="${esc(set.pieces[slot].name)}" onclick="craftSetPiece('${id}','${slot}')">${FORGE_SLOT_ICONS[slot]}</button>`
-      ).join(' ');
-      return `<div class="forge-row">
-        <span class="shop-thumb">${thumb}</span>
-        <span>${set.icon} <b>${esc(t(set.name))}</b> <span class="muted">${costLabel(cost)} / ${t('шт.')}</span></span>
-        <div class="forge-slots">${slotBtns}</div>
-      </div>`;
-    }).join('');
-  }
-  // перековка рарности предметов сетов из рюкзака
-  const reforgeable = player.inventory.filter((it) => it.set && RARITY_ORDER.indexOf(it.rarity || 'common') < RARITY_ORDER.length - 1);
-  const reforgeHtml = reforgeable.length ? reforgeable.map((it) => {
-    const idx = RARITY_ORDER.indexOf(it.rarity || 'common');
-    const target = RARITY_ORDER[idx + 1];
-    const cost = reforgeCost(target);
-    const aff = canAfford(cost);
-    const rc = RARITIES[it.rarity] || RARITIES.common;
-    const tc = RARITIES[target];
-    return `<div class="forge-row">
-      <span class="shop-thumb">${itemArt(it)}</span>
-      <span class="forge-info">
-        <span><b style="color:${rc.color}">${esc(t(it.name))}</b> <span class="muted">${t(rc.name)} → <span style="color:${tc.color}">${t(tc.name)}</span></span></span>
-        <span class="forge-delta">${reforgeDelta(it)}</span>
-      </span>
-      <span class="muted">${costLabel(cost)}</span>
-      <button class="mini" ${aff ? '' : 'disabled'} onclick="reforgeItem(${it.id})">перековать</button>
-    </div>`;
-  }).join('') : '<p class="muted">Нет частей сетов в рюкзаке. Надетые сначала снимите в Покоях героя.</p>';
-
-  const tabs = `<div class="mk-tabs" style="grid-template-columns:1fr 1fr;margin:.3em 0">
-    <button class="mk-tab ${forgeTab==='craft'?'on':''}" onclick="forgeTab='craft';render()">🔨 ${t('Ковка частей')}</button>
-    <button class="mk-tab ${forgeTab==='reforge'?'on':''}" onclick="forgeTab='reforge';render()">♻️ ${t('Перековка рарности')}</button>
-  </div>`;
-  const body = forgeTab === 'reforge'
-    ? `<p class="muted">${t('Перековка сохраняет заточку и камни, но по Душам дороже прямой покупки — целую вещь нужной рарности выгоднее купить в Магазине.')}</p>${reforgeHtml}`
-    : `<p class="muted">${t('Скуй недостающие части найденных комплектов.')}</p>${craftHtml}`;
-
-  return `<h3>🔥 Кузница сетов</h3>${tabs}${body}`;
-}
 function viewLab() {
   const rs = RECIPES.filter((r) => r.out.item && ['эликсир','зелье','мазь'].includes(r.out.item.type));
   return `<div class="panel">
