@@ -263,7 +263,7 @@ function worldBg(i, loc) {
   return artFrame(base, worldBgSvg(i, loc), 'af-bg', ['jpg', 'png']);
 }
 function mobArt(name, opts) {
-  const base = String(name).replace(' ⭐', '');
+  const base = String(name).replace(' ⭐', '').replace(/\s*\+\d+$/, '');
   return artFrame(`img/mobs/${artSlug(base)}`, mobArtSvg(name, opts), 'af-mob', ['jpg', 'png']);
 }
 function itemArt(it) { return artFrame(itemImgPath(it), itemArtSvg(it), 'af-item', ['jpg', 'png']); }

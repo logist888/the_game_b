@@ -4,6 +4,9 @@
  */
 
 const SAVE_KEY = window.TG_USER ? `babylon_save_v1_${window.TG_USER.id}` : 'babylon_save_v1';
+// Был ли локальный сейв на ЭТОМ домене ДО запуска. Если нет (напр. сменили домен/
+// origin) — облачный сейв считаем авторитетным и подтягиваем его, не глядя на метки.
+const _hadLocalSave = !!(window.localStorage && localStorage.getItem(SAVE_KEY));
 
 // URL Cloudflare Worker — заменить после деплоя (см. babylon/worker/save-worker.js)
 const CLOUD_URL = 'https://babylon-save.logist888.workers.dev';
@@ -29,6 +32,9 @@ function newPlayer(name) {
     elements: { ветер:0, вода:0, огонь:0, земля:0 },
     dirs: { свет:0, тьма:0, сумрак:0 },
     spells: ['small_heal','light_ray','air_shield'],
+    mageGuild: false,     // членство в Гильдии магов
+    spellPlus: {},        // уровни улучшения заклинаний: spellId -> ур.
+    pets: [],             // прирученные питомцы (Рейнджер)
     // экипировка по слотам
     equip: { weapon:null, head:null, body:null, shield:null, ring:null, amulet:null, earring:null },
     inventory: [],        // предметы (оружие/броня/бижутерия/зелья)
@@ -38,6 +44,7 @@ function newPlayer(name) {
     // прогресс квестов
     quests: {},
     visitedLocations: [],
+    defeatedMobs: [],     // имена мобов, побеждённых хотя бы раз (для открытия миров)
     counters: { kills:0, gathered:0, crafted:0, expeditions:0, bossKills:0 },
     // нижний мир: уровни построек смертных + время последнего сбора
     lowerWorld: { buildings: { city:0, sawmill:0, quarry:0, mine:0, farm:0 }, lastCollect: Date.now(), construction: null },
@@ -51,6 +58,7 @@ function newPlayer(name) {
     clan: null,           // кэш данных клана (обновляется с сервера, не авторитетен)
     referredBy: null,
     refRegistered: false,
+    createdAt: Date.now(),   // для окна ввода промокода (7 дней)
     welcomeSeen: false,
     pvp: { wins: 0, losses: 0 },
   };
@@ -97,6 +105,40 @@ let player = loadGame() || (() => {
 })();
 
 // --- Рост стата от использования (геометрическая прогрессия) ---
+// --- Боевые навыки: хранятся как сырой опыт, уровень считается по удвоению планки ---
+function skillLevel(id) {
+  let xp = (player.skills && player.skills[id]) || 0;
+  let lvl = 0; let cap = 10;
+  while (xp >= cap) { xp -= cap; lvl += 1; cap = Math.round(cap * 1.8); }
+  return lvl;
+}
+function skillProgress(id) { // {xp, cap} внутри текущего уровня — для прогресс-бара
+  let xp = (player.skills && player.skills[id]) || 0;
+  let cap = 10;
+  while (xp >= cap) { xp -= cap; cap = Math.round(cap * 1.8); }
+  return { xp, cap };
+}
+function trainSkill(id, amount) {
+  if (!id) return;
+  if (!player.skills) player.skills = {};
+  const before = skillLevel(id);
+  player.skills[id] = (player.skills[id] || 0) + amount;
+  const after = skillLevel(id);
+  if (after > before && SKILLS[id]) pushLog('📘 Навык «{skill}» вырос до {n}!', {skill:L(SKILLS[id].name), n:after});
+  recalc();
+}
+// Сколько питомцев можно вывести в бой одновременно (растёт с навыком Приручение).
+function activePetCap() { return Math.min(3, 1 + Math.floor(skillLevel('taming') / 2)); }
+
+// Доминирующий класс надетой брони (light/medium/heavy) или null.
+function dominantArmorClass() {
+  const c = { light: 0, medium: 0, heavy: 0 };
+  ['head', 'body', 'shield'].forEach((s) => { const k = armorClassOf(player.equip[s]); if (k) c[k] += 1; });
+  let best = null; let n = 0;
+  for (const k in c) { if (c[k] > n) { n = c[k]; best = k; } }
+  return n > 0 ? best : null;
+}
+
 function trainStat(key, amount) {
   const s = player.stats[key];
   if (!s) return;
@@ -105,7 +147,7 @@ function trainStat(key, amount) {
     s.prog -= s.cap;
     s.val += 1;
     s.cap = Math.round(s.cap * 1.6); // 40 -> 64 -> 102 ... (мягкая геометрия)
-    pushLog(`📈 ${STATS[key].name} выросла до ${s.val}!`);
+    pushLog('📈 {stat} выросла до {v}!', {stat:sName(key), v:s.val});
   }
   recalc();
 }
@@ -134,8 +176,8 @@ function gainProfXp(key, amount) {
     p.xp -= need;
     p.lvl += 1;
     const info = PROFESSIONS[key];
-    pushLog(`📈 ${info.icon} ${info.name}: уровень ${p.lvl} (${profTitle(p.lvl)})!`);
-    if (typeof showToast === 'function') showToast(`${info.icon} ${info.name} ур. ${p.lvl}`);
+    pushLog('📈 {icon} {prof}: уровень {lvl} ({title})!', {icon:info.icon, prof:L(info.name), lvl:p.lvl, title:L(profTitle(p.lvl))});
+    if (typeof showToast === 'function') showToast(tp('{icon} {prof} ур. {lvl}', {icon:info.icon, prof:L(info.name), lvl:p.lvl}));
     _learnProfRecipes(key, p.lvl);
     need = profNeed(p.lvl);
   }
@@ -148,7 +190,7 @@ function _learnProfRecipes(key, lvl) {
     if (req <= lvl && !player.knownRecipes.includes(id)) {
       player.knownRecipes.push(id);
       const rec = RECIPES.find((x) => x.id === id);
-      pushLog(`📜 Тайное знание: изучен рецепт «${rec ? rec.name : id}»!`);
+      pushLog('📜 Тайное знание: изучен рецепт «{rec}»!', {rec:L(rec ? rec.name : id)});
     }
   });
 }
@@ -176,8 +218,8 @@ function gainXp(n) {
     player.hp = player.maxHp; player.mp = player.maxMp; // полное восстановление
     const reward = player.xpLevel * 20;
     addRes('sparks', reward);
-    pushLog(`🎉 Новый уровень ${player.xpLevel}! Полное восстановление и +${reward} 🔥 искр.`);
-    if (typeof showToast === 'function') showToast(`🎉 Уровень ${player.xpLevel}!`);
+    pushLog('🎉 Новый уровень {lvl}! Полное восстановление и +{n} 🔥 искр.', {lvl:player.xpLevel, n:reward});
+    if (typeof showToast === 'function') showToast(tp('🎉 Уровень {lvl}!', {lvl:player.xpLevel}));
     _notifyLevelUp(player.xpLevel);
     need = xpNeed(player.xpLevel);
   }
@@ -191,6 +233,13 @@ function recalc() {
   if (!player.pvp) player.pvp = { wins: 0, losses: 0 };
   if (!player.counters) player.counters = { kills: player.kills || 0, gathered: player.gathered || 0, crafted: player.crafted || 0, expeditions: player.expeditions || 0, bossKills: 0 };
   if (player.counters.bossKills == null) player.counters.bossKills = 0;
+  if (!Array.isArray(player.defeatedMobs)) player.defeatedMobs = [];
+  if (!player.skills || typeof player.skills !== 'object') player.skills = {};
+  if (typeof player.mageGuild !== 'boolean') player.mageGuild = false;
+  if (!player.spellPlus || typeof player.spellPlus !== 'object') player.spellPlus = {};
+  if (!Array.isArray(player.pets)) player.pets = [];
+  // старым вещам (до введения прочности) проставляем прочность, чтобы шкала отображалась
+  [...(player.inventory || []), ...Object.values(player.equip || {})].forEach((it) => { if (it && it.slot && !it.durability) it.durability = [1000, 1000]; });
   // Откат поселений: вернуть прогресс из массива settlements в одиночный lowerWorld
   if (!player.lowerWorld && Array.isArray(player.settlements) && player.settlements.length) {
     const sumLv = (s) => LOWER_ORDER.reduce((t, k) => t + ((s.buildings && s.buildings[k]) || 0), 0);
@@ -209,6 +258,7 @@ function recalc() {
   if (!player.loadouts) player.loadouts = [];
   if (!player.achievements) player.achievements = [];
   if (!player.limits) player.limits = {};
+  if (!player.createdAt) player.createdAt = Date.now();
   if (typeof ensureDaily === 'function') ensureDaily();
   if (!player.codex) {
     // бэкафилл: учесть сет-вещи, уже лежащие в рюкзаке/экипировке
@@ -219,7 +269,7 @@ function recalc() {
   PROF_ORDER.forEach((k) => { if (!player.professions[k]) player.professions[k] = { lvl: 1, xp: 0 }; });
   // Пассивный бонус клана («клановый артефакт»): +1 ко всем статам за каждые
   // 3 участника, максимум +4. Берётся из кэша player.clan (обновляется с сервера).
-  const clanBuff = player.clan && player.clan.size ? Math.min(4, Math.floor(player.clan.size / 3)) : 0;
+  const clanBuff = (player.clan && player.clan.size ? Math.min(4, Math.floor(player.clan.size / 3)) : 0) + clanPerk('artifact');
   player.clanBuff = clanBuff;
   // активные сет-бонусы (по числу надетых частей одного комплекта)
   const setInfo = computeSetInfo();
@@ -232,21 +282,28 @@ function recalc() {
   if (player.hp === 0 || player.hp > maxHp) player.hp = maxHp;
   if (player.mp === 0 || player.mp > maxMp) player.mp = maxMp;
 
-  const weapon = player.equip.weapon;
+  const weapon = isBroken(player.equip.weapon) ? null : player.equip.weapon; // сломанное оружие = кулаки
   const wdmg = weapon ? [...weapon.dmg] : [1, 2]; // кулаки
-  const dmgMult = 1 + v('str') * 0.02 + v('end') * 0.01;
+  // навык владения текущим оружием: +1% урона и +1 к мин/макс за уровень
+  const wSkill = weaponSkillFor(weapon);
+  const wlvl = wSkill ? skillLevel(wSkill) : 0;
+  const dmgMult = 1 + v('str') * 0.02 + v('end') * 0.01 + wlvl * 0.01;
+  // навык владения надетой бронёй: +2 брони и +1 защиты за уровень
+  const aClass = dominantArmorClass();
+  const alvl = aClass ? skillLevel(ARMOR_SKILL[aClass]) : 0;
   player.derived = {
     str:v('str'), agi:v('agi'), end:v('end'), int:v('int'), fai:v('fai'),
     fur:v('fur'), luk:v('luk'), rea:v('rea'), ref:v('ref'),
-    attack: 10 + v('agi') * 2,
-    defense: 5 + v('agi') * 1 + Math.round(v('rea') * 0.5),
-    armor: armorTotal(),
-    dmgMin: Math.max(1, Math.round(wdmg[0] * dmgMult)),
-    dmgMax: Math.max(2, Math.round(wdmg[1] * dmgMult)),
+    attack: 10 + v('agi') * 2 + (wSkill === 'ranged' ? wlvl : 0),
+    defense: 5 + v('agi') * 1 + Math.round(v('rea') * 0.5) + alvl,
+    armor: armorTotal() + alvl * 2,
+    dmgMin: Math.max(1, Math.round(wdmg[0] * dmgMult) + wlvl),
+    dmgMax: Math.max(2, Math.round(wdmg[1] * dmgMult) + wlvl),
     physCrit: Math.min(95, v('fur') * 2),
     magCrit: Math.min(95, v('fai') * 2),
     physCounter: Math.min(75, v('rea') * 2),
     magCounter: Math.min(75, v('ref') * 2),
+    parry: Math.min(60, skillLevel('parry') * 2),
     maxDmgChance: Math.min(90, v('luk')),
     lootBonus: v('luk') * 5,
     hpRegen: 1 + v('end') + v('fur'),
@@ -257,7 +314,7 @@ function recalc() {
   };
   // применяем модификаторы сет-бонусов к боевым параметрам
   applySetMods(player.derived, setInfo.mods);
-  // уровень героя = сумма статов / 5 (грубая агрегация)
+  // уровень героя = сумма статов / 9 (грубая агрегация)
   player.level = Math.max(1, Math.floor(STAT_ORDER.reduce((a, k) => a + player.stats[k].val, 0) / 9));
   player.danger = player.level;
 }
@@ -301,10 +358,22 @@ function applySetMods(d, m) {
   if (m.maxDmgFlat) d.maxDmgChance = Math.min(90, d.maxDmgChance + m.maxDmgFlat);
 }
 
+// Сломанный предмет (прочность 0) не даёт свойств, пока не починен.
+function isBroken(it) { return !!(it && it.durability && it.durability[0] <= 0); }
+// Износ предмета в бою (оружие/броня). При поломке — лог и пересчёт.
+function damageItem(it, n) {
+  if (!it || !it.durability || it.durability[0] <= 0) return;
+  it.durability[0] = Math.max(0, it.durability[0] - n);
+  if (it.durability[0] === 0) { pushLog('⚠️ «{item}» сломалось — почините, чтобы вернуть свойства.', {item:L(it.name)}); recalc(); }
+}
+
 function equipBonus(stat) {
   let b = 0;
   Object.values(player.equip).forEach((it) => {
-    if (it && it.bonus && it.bonus[stat]) b += it.bonus[stat];
+    if (!it || isBroken(it)) return; // сломанное не даёт бонусов
+    if (it.bonus && it.bonus[stat]) b += it.bonus[stat];
+    // бонусы от вставленных в гнёзда усилителей
+    if (it.sockets) it.sockets.forEach((g) => { if (g && g.gemStat === stat) b += g.bonus; });
   });
   return b;
 }
@@ -314,9 +383,14 @@ function statTotal(stat) {
   return player.stats[stat].val + equipBonus(stat) + (player.clanBuff || 0);
 }
 
+// Уровень кланового улучшения (из кэша player.clan).
+function clanPerk(key) {
+  return (player.clan && player.clan.upgrades && player.clan.upgrades[key]) || 0;
+}
+
 function armorTotal() {
   let a = 0;
-  ['head','body','shield'].forEach((s) => { if (player.equip[s]) a += player.equip[s].armor || 0; });
+  ['head','body','shield'].forEach((s) => { const it = player.equip[s]; if (it && !isBroken(it)) a += it.armor || 0; });
   return a;
 }
 
@@ -359,7 +433,9 @@ function recordCodex(it) {
   if (!cur || rank(it.rarity) > rank(cur)) player.codex[it.set][it.slot] = it.rarity || 'common';
 }
 
-function pushLog(msg) {
+function pushLog(template, vars) {
+  let msg = (typeof t === 'function') ? t(template) : template;
+  if (vars) msg = msg.replace(/\{(\w+)\}/g, (mm, k) => (vars[k] != null ? vars[k] : ''));
   player.log.unshift({ t: Date.now(), msg });
   if (player.log.length > 60) player.log.pop();
 }
@@ -430,12 +506,22 @@ async function syncFromCloud() {
     const pendingBonus = remote._pendingBonus || 0;
     const remoteRefCount = remote._refCount;
     const pendingMarketGold = remote._pendingMarketGold || 0;
+    const pendingMarketSouls = remote._pendingMarketSouls || 0;
+    const pendingMarketItems = remote._pendingMarketItems || null;
     delete remote._pendingBonus;
     delete remote._refCount;
     delete remote._pendingMarketGold;
+    delete remote._pendingMarketSouls;
+    delete remote._pendingMarketItems;
 
     const local = loadGame();
-    if (!local || (remote.lastSaved || 0) > (local.lastSaved || 0)) {
+    // «Чистый» локальный герой: только что создан, без прогресса.
+    const localPristine = !local || (((local.xpLevel || 1) <= 1) && (!local.counters || (local.counters.kills || 0) === 0));
+    const remoteProgress = (remote.xpLevel || 1) > 1 || (remote.counters && (remote.counters.kills || 0) > 0) || (remote.inventory && remote.inventory.length > 3);
+    // Подтягиваем облако, если: локального сейва на этом домене не было (смена origin),
+    // его нет совсем, облако новее, ИЛИ локальный герой чистый, а в облаке есть прогресс
+    // (защита от затирания реального облачного сейва свежим после смены домена).
+    if (!_hadLocalSave || !local || (remote.lastSaved || 0) > (local.lastSaved || 0) || (localPristine && remoteProgress)) {
       localStorage.setItem(SAVE_KEY, JSON.stringify(remote));
       player = remote;
       recalc();
@@ -444,15 +530,25 @@ async function syncFromCloud() {
 
     if (pendingBonus) {
       player.resources.gold = (player.resources.gold || 0) + pendingBonus;
-      pushLog(`🎁 Бонус от рефералов: +${pendingBonus} 🪙`);
-      if (typeof showToast === 'function') showToast(`🎁 +${pendingBonus} 🪙 от рефералов!`);
+      pushLog('🎁 Бонус от рефералов: +{n} 🪙', {n:pendingBonus});
+      if (typeof showToast === 'function') showToast(tp('🎁 +{n} 🪙 от рефералов!', {n:pendingBonus}));
     }
     if (remoteRefCount != null) player.refCount = remoteRefCount;
 
     if (pendingMarketGold) {
       player.resources.gold = (player.resources.gold || 0) + pendingMarketGold;
-      pushLog(`💰 Выручка с барахолки: +${pendingMarketGold} 🪙`);
-      if (typeof showToast === 'function') showToast(`💰 +${pendingMarketGold} 🪙 за проданные лоты!`);
+      pushLog('💰 Выручка с барахолки: +{n} 🪙', {n:pendingMarketGold});
+      if (typeof showToast === 'function') showToast(tp('💰 +{n} 🪙 за проданные лоты!', {n:pendingMarketGold}));
+    }
+    if (pendingMarketSouls) {
+      player.resources.souls = (player.resources.souls || 0) + pendingMarketSouls;
+      pushLog('💰 Выручка с барахолки: +{n} 👻', {n:pendingMarketSouls});
+      if (typeof showToast === 'function') showToast(tp('💰 +{n} 👻 за проданные лоты!', {n:pendingMarketSouls}));
+    }
+    if (pendingMarketItems && pendingMarketItems.length) {
+      pendingMarketItems.forEach((it) => { if (typeof addItem === 'function') addItem(it); });
+      pushLog('↩️ С барахолки вернулись вещи: {n}', {n:pendingMarketItems.length});
+      if (typeof showToast === 'function') showToast(tp('↩️ С барахолки вернулось вещей: {n}', {n:pendingMarketItems.length}));
     }
 
     if (pendingBonus || remoteRefCount != null || pendingMarketGold) saveGame();

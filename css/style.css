@@ -142,7 +142,23 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .res-chip{background:#1c150e; border:1px solid var(--line); border-radius:6px; padding:.2em .5em}
 .gather-grid{display:flex; flex-wrap:wrap; gap:.4em}
 .shop-row{display:grid; grid-template-columns:1fr auto auto auto auto; gap:.5em; align-items:center; padding:.25em 0; border-bottom:1px dashed #2a2016; font-size:.88rem}
-.shop-row.gear{grid-template-columns:1fr auto auto}
+.buy-set.unaff, .mini.unaff, .big.unaff{opacity:.55}
+.prem-status{margin:.4em 0; padding:.4em .7em; border-radius:8px; border:1px solid var(--line); color:var(--muted); font-size:.9rem}
+.prem-status.on{color:#f0c469; border-color:#7a5e1f; background:rgba(217,164,65,.08)}
+.prem-perks{margin:.2em 0 .5em 1.1em; font-size:.85rem; color:var(--muted)}
+.prem-perks li{margin:.12em 0}
+.prem-buy{display:grid; grid-template-columns:1fr 1fr; gap:.5em}
+.prem-buy .big{margin:0}
+.prem-set{border:1px solid var(--line); border-radius:10px; padding:.5em .6em; margin:.6em 0; background:rgba(0,0,0,.12)}
+.prem-set .buy-set{width:100%; margin:.5em 0 .1em}
+.soul-packs{display:grid; grid-template-columns:1fr 1fr; gap:.5em; margin:.4em 0}
+.soul-pack{margin:0; color:#2a1d0a}
+.soul-pack b{color:#1a130c}
+.soul-pack .muted{color:#5a4416; font-size:.85em; opacity:1}
+.req-stat.ok{color:#7bbf6a}
+.req-stat.lack{color:#e0664f}
+.shop-row.gear{grid-template-columns:auto 1fr auto auto}
+.shop-thumb{width:42px; height:42px; flex:none; border-radius:7px; overflow:hidden; background:#1a140d; border:1px solid #2a2016}
 .shop-sub{margin:.5em 0 .2em; color:var(--gold2); font-size:.92rem}
 .recipe-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:.6rem}
 .recipe{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.5rem; font-size:.82rem; display:flex; gap:.5rem}
@@ -368,6 +384,9 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 .forge-sub{color:var(--gold2); font-weight:700; margin:.7em 0 .3em; font-size:.92rem}
 .forge-row{display:flex; align-items:center; justify-content:space-between; gap:.5em; flex-wrap:wrap;
   background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.4em .7em; margin:.3em 0; font-size:.85rem}
+.forge-info{display:flex; flex-direction:column; gap:1px; flex:1; min-width:130px}
+.forge-delta{font-size:.72rem; color:var(--muted)}
+.forge-delta b{color:var(--gold2)}
 .forge-slots{display:flex; gap:.25em}
 .forge-slots .mini{padding:.2em .5em}
 
@@ -442,3 +461,119 @@ select{background:#1a130c; color:var(--txt); border:1px solid var(--line); borde
 
 /* кнопка «одеть лучшее» в Кодексе */
 .codex-actions{margin-top:.4em}
+
+/* промокод */
+.promo-mine{display:flex; align-items:center; gap:.5em; flex-wrap:wrap; margin:.4em 0; font-size:.9rem}
+.promo-code{font-size:1.05rem; letter-spacing:.08em; color:var(--gold2); background:#1c150e;
+  border:1px dashed var(--gold); border-radius:6px; padding:.1em .5em}
+
+/* гнёзда и усилители */
+.sockets{display:flex; gap:.3em; flex-wrap:wrap; justify-content:center; margin:.25em 0}
+.sock{width:30px; height:26px; border:1px solid var(--line); border-radius:6px; background:#1c150e; font-size:.95rem; line-height:1; padding:0}
+.sock.filled{border-color:var(--gold)}
+.sock.add{color:var(--gold2); border-style:dashed}
+.sock-sel{width:34px; height:26px; border:1px dashed var(--line); border-radius:6px; background:#1c150e; color:var(--muted); font-size:.85rem}
+.gem-forge{display:flex; flex-direction:column; gap:.3em; margin:.3em 0}
+.gem-row{display:flex; align-items:center; justify-content:space-between; gap:.5em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.3em .6em; font-size:.85rem}
+.gem-btns{display:flex; gap:.25em}
+.gem-btns .mini small{opacity:.8}
+
+/* клановые улучшения */
+.clan-ups{display:flex; flex-direction:column; gap:.35em; margin:.3em 0}
+.clan-up{display:flex; align-items:center; justify-content:space-between; gap:.6em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.4em .7em}
+.clan-up-info{font-size:.85rem}
+.clan-up-info .muted{font-size:.78rem}
+
+/* роли/управление кланом */
+.clan-member-r{display:flex; align-items:center; gap:.3em}
+.clan-member-r .mini{padding:.15em .4em; font-size:.72rem}
+.clan-apps{display:flex; flex-direction:column; gap:.3em; margin:.3em 0}
+.tag-ok{background:#1f5e2f; color:#a7f3b6}
+.tag-no{background:#5e1f1f; color:#f3a7a7}
+
+/* клановый рейд */
+.raid-box{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:.6em .7em; margin:.3em 0}
+.raid-head{display:flex; align-items:center; gap:.5em; margin-bottom:.4em}
+.raid-bar{position:relative; height:22px; background:#2a1414; border:1px solid var(--line); border-radius:11px; overflow:hidden; margin-bottom:.5em}
+.raid-bar-fill{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#a31616,#e23b3b); transition:width .3s}
+.raid-bar-txt{position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:600; text-shadow:0 1px 2px #000}
+.raid-top{margin-top:.4em; font-size:.85rem}
+.raid-reward{background:#1f5e2f; border:1px solid #2f8f47; border-radius:8px; padding:.45em .7em; margin:.3em 0; display:flex; align-items:center; justify-content:space-between; gap:.5em}
+
+/* клан-доска: сообщение дня + лог */
+.motd{background:var(--panel2); border:1px solid var(--line); border-left:3px solid #c8a13a; border-radius:8px; padding:.5em .7em; margin:.3em 0}
+.motd-title{font-size:.8rem; margin-bottom:.2em}
+.motd-text{font-size:.92rem; white-space:pre-wrap; word-break:break-word}
+.clan-log{display:flex; flex-direction:column; gap:.15em; max-height:220px; overflow-y:auto}
+.clan-log-row{display:flex; justify-content:space-between; gap:.6em; font-size:.82rem; padding:.2em .3em; border-bottom:1px solid rgba(255,255,255,.05)}
+
+/* клан-арсенал (магазин с арендой) */
+.clan-shop{display:flex; flex-direction:column; gap:.3em; margin:.3em 0}
+.shop-row{display:flex; align-items:center; justify-content:space-between; gap:.6em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.4em .7em}
+.shop-info{font-size:.85rem; flex:1 1 auto; min-width:0}
+.shop-info .muted{font-size:.78rem}
+.shop-act{display:flex; align-items:center; gap:.3em; white-space:nowrap; flex:none}
+.shop-rent{margin-top:.2em; font-size:.78rem; color:#c9a35a}
+.item-card.rented{border-left-color:#c8a13a !important; box-shadow:inset 0 0 0 1px rgba(200,161,58,.3)}
+.rent-tag{font-size:.72rem; color:#e6c869; font-weight:600}
+
+/* вкладки внутри клана */
+.clan-tabs{display:flex; flex-wrap:wrap; gap:.3em; margin:.4em 0}
+.clan-tab{flex:1 1 auto; min-width:max-content; padding:.4em .6em; font-size:.82rem; background:var(--panel2); border:1px solid var(--line); border-radius:8px; color:var(--fg); cursor:pointer}
+.clan-tab.active{background:var(--accent,#c8a13a); color:#1a1208; border-color:var(--accent,#c8a13a); font-weight:600}
+.clan-tab-body{margin-top:.3em}
+
+/* плашка закрытого мира */
+.lock-note{background:#3a2412; border:1px solid #7a4a1a; color:#f0c890; border-radius:8px; padding:.45em .7em; margin:.3em 0; font-size:.85rem}
+
+/* полоса миров со статусами в Лестнице */
+.world-strip{display:flex; flex-wrap:wrap; gap:.3em; margin:.3em 0 .5em}
+.world-chip{min-width:2.6em; padding:.35em .5em; font-size:.82rem; border:1px solid var(--line); border-radius:8px; background:var(--panel2); color:var(--fg); cursor:pointer}
+.world-chip.cleared{border-color:#2f8f47; color:#a7f3b6}
+.world-chip.locked{opacity:.55; color:#f0c890}
+.world-chip.sel{outline:2px solid var(--accent,#c8a13a); font-weight:600}
+
+/* прочность предметов */
+.dur{display:flex; align-items:center; gap:.4em; font-size:.72rem; margin:.2em 0}
+.dur-bar{flex:1; height:6px; background:#3a2a14; border-radius:3px; overflow:hidden}
+.dur-bar i{display:block; height:100%; background:linear-gradient(90deg,#6fae3b,#9ed85a)}
+.dur.low .dur-bar i{background:linear-gradient(90deg,#c8a13a,#e6c869)}
+.dur.broken .dur-bar i{background:#a33}
+.dur.broken span{color:#f3a7a7; font-weight:600}
+
+/* Гильдия магов */
+.mg-list{display:flex; flex-direction:column; gap:.35em; margin:.3em 0}
+.mg-row{display:flex; align-items:center; justify-content:space-between; gap:.6em; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:.4em .7em}
+.mg-info{font-size:.86rem}
+.mg-info .muted{font-size:.78rem}
+
+/* статы создаваемой вещи в карточке рецепта */
+.rc-stats{font-size:.82rem; color:#cda; margin:.15em 0 .25em}
+
+/* гнёзда: подпись и пустое гнездо */
+.sock-label{opacity:.7; margin-right:.15em; font-size:.85rem}
+.sock.empty{display:inline-flex; align-items:center; justify-content:center; opacity:.5; cursor:help}
+
+/* живой чат (мир/клан) */
+.chat-box{display:flex; flex-direction:column; gap:.4em; max-height:50vh; min-height:160px; overflow-y:auto; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:.5em .6em; margin:.3em 0}
+.chat-msg{display:flex; flex-direction:column; gap:.1em; padding:.35em .55em; background:rgba(255,255,255,.04); border-radius:8px; align-self:flex-start; max-width:85%}
+.chat-msg.me{align-self:flex-end; background:rgba(200,161,58,.15)}
+.chat-head{font-size:.72rem; opacity:.8}
+.chat-name{color:#e6c869}
+.chat-time{opacity:.6; margin-left:.3em}
+.chat-text{font-size:.9rem; word-break:break-word; white-space:pre-wrap}
+
+/* ряд отправки чата: крупное поле на всю ширину */
+.chat-send{display:flex; gap:.5em; align-items:stretch; width:100%}
+.chat-send #chat-input{flex:1 1 auto; width:auto; min-width:0; font-size:1rem; padding:.7em .8em}
+.chat-send .chat-send-btn{flex:0 0 auto; padding:.7em 1em; font-size:.95rem}
+.chat-lang-tabs{display:flex; flex-wrap:wrap; gap:.4em; margin:.2em 0 .1em}
+.chat-lang-tab{flex:0 0 auto; padding:.35em .9em; font-size:.9rem; background:var(--panel2); border:1px solid var(--line); border-radius:999px; color:var(--muted); cursor:pointer}
+.chat-lang-tab.active{background:rgba(200,161,58,.18); border-color:var(--gold); color:var(--text)}
+
+/* выбор языка (первый вход) */
+.lang-overlay{position:fixed; inset:0; z-index:9999; background:rgba(8,6,4,.92); display:flex; align-items:center; justify-content:center; padding:1.5em}
+.lang-box{background:var(--panel,#1a140c); border:1px solid var(--line,#3a2c18); border-radius:16px; padding:1.5em 1.3em; max-width:340px; width:100%; text-align:center; display:flex; flex-direction:column; gap:.7em}
+.lang-title{font-size:1.15rem; font-weight:700; margin-bottom:.4em; line-height:1.4}
+.tower-head{display:flex; align-items:center; justify-content:space-between; gap:.6em}
+.lang-toggle{flex:0 0 auto}

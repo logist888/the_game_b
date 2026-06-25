@@ -112,6 +112,7 @@
 <div id="tabs">
   <button class="tab-btn on" onclick="switchTab('players')">👥 Игроки</button>
   <button class="tab-btn" onclick="switchTab('referrals')">🤝 Рефералы</button>
+  <button class="tab-btn" onclick="switchTab('revenue')">💰 Выручка</button>
 </div>
 
 <div id="toolbar" style="display:none">
@@ -121,6 +122,7 @@
 
 <div id="dash" style="display:none"></div>
 <div id="ref-section" style="display:none"></div>
+<div id="rev-section" style="display:none"></div>
 
 <script>
 const WORKER = 'https://babylon-save.logist888.workers.dev';
@@ -179,15 +181,53 @@ function renderAll() {
 
 function switchTab(tab) {
   currentTab = tab;
+  const labels = { players:'Игроки', referrals:'Рефералы', revenue:'Выручка' };
   document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.toggle('on', b.textContent.includes(tab === 'players' ? 'Игроки' : 'Рефералы'));
+    b.classList.toggle('on', b.textContent.includes(labels[tab]));
   });
-  const isPlayers = tab === 'players';
-  document.getElementById('toolbar').style.display = isPlayers ? 'flex' : 'none';
-  document.getElementById('dash').style.display = isPlayers ? 'block' : 'none';
-  document.getElementById('ref-section').style.display = isPlayers ? 'none' : 'block';
-  if (isPlayers) renderTable();
-  else renderReferrals();
+  document.getElementById('toolbar').style.display = tab==='players' ? 'flex' : 'none';
+  document.getElementById('dash').style.display = tab==='players' ? 'block' : 'none';
+  document.getElementById('ref-section').style.display = tab==='referrals' ? 'block' : 'none';
+  document.getElementById('rev-section').style.display = tab==='revenue' ? 'block' : 'none';
+  if (tab==='players') renderTable();
+  else if (tab==='referrals') renderReferrals();
+  else renderRevenue();
+}
+
+async function renderRevenue() {
+  const el = document.getElementById('rev-section');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted)"><div class="spin"></div><br>Загрузка…</div>';
+  try {
+    const r = await fetch(`${WORKER}/admin/revenue?key=${encodeURIComponent(adminKey)}`);
+    if (!r.ok) throw new Error(`Ошибка ${r.status}`);
+    const d = await r.json();
+    const packName = id => ({xs:'1 👻',s:'10 👻',m:'55 👻',l:'200 👻',xl:'550 👻'}[id]||id);
+    const cards = [
+      ['⭐ Баланс бота', d.starBalance==null?'—':d.starBalance.toLocaleString()],
+      ['⭐ Заработано всего', (d.starsEarned||0).toLocaleString()],
+      ['👻 Душ продано', (d.soulsSold||0).toLocaleString()],
+      ['≈ $ выручка', '$'+(d.usdEstimate||0).toLocaleString()],
+      ['Покупателей', d.buyers||0],
+      ['Заказов', d.orders||0],
+    ].map(([l,v])=>`<div class="sc"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+    const rows = (d.recent||[]).map(o=>`
+      <tr>
+        <td style="font-size:.75rem;color:var(--muted)">${ago(o.ts)}</td>
+        <td><span class="uid">ID ${o.uid}</span></td>
+        <td><span class="badge">${packName(o.packId)}</span></td>
+        <td>👻 ${o.souls}</td>
+        <td>⭐ ${o.stars}</td>
+      </tr>`).join('');
+    el.innerHTML = `
+      <div style="display:flex;gap:.8rem;flex-wrap:wrap;padding:.8rem 1rem">${cards}</div>
+      <p style="padding:0 1rem;color:var(--muted);font-size:.78rem">⭐ Баланс — живой из Telegram. Вывод в TON — на fragment.com (мин. 1000 ⭐, холд 21 день). Оценка $ ≈ ⭐ × 0.013.</p>
+      <div style="padding:.4rem 1rem 2rem;overflow-x:auto">
+        ${rows ? `<table><thead><tr><th>Когда</th><th>Игрок</th><th>Пак</th><th>Душ</th><th>Звёзд</th></tr></thead><tbody>${rows}</tbody></table>`
+               : '<p style="color:var(--muted);text-align:center;padding:2rem">Покупок пока нет</p>'}
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<p style="padding:2rem;color:#f44336;text-align:center">Ошибка: ${esc(e.message)}</p>`;
+  }
 }
 
 async function renderReferrals() {

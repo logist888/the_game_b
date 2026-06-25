@@ -67,7 +67,37 @@ const SPELLS = [
     desc:'Крадёт жизнь врага: −20 HP врагу, +10 HP вам.', eff:{ dmg:20, heal:10 } },
   { id:'meteor',           name:'Метеор',            element:'земля', dir:'тьма',   cost:40, kind:'damage',
     desc:'Падающий метеор сокрушает цель: −50 HP.', eff:{ dmg:50 } },
+  // --- Заклинания Гильдии магов (изучаются за плату по рангу) ---
+  { id:'ice_lance',  name:'Ледяное копьё', element:'вода',  dir:'тьма', cost:22, kind:'damage',
+    desc:'Пронзает цель льдом: −28 HP.', eff:{ dmg:28 } },
+  { id:'tempest',    name:'Буря',          element:'ветер', dir:'тьма', cost:35, kind:'damage',
+    desc:'Шторм бьёт по всем врагам: −22 HP.', eff:{ dmg:22, aoe:true } },
+  { id:'regen_aura', name:'Аура жизни',    element:'вода',  dir:'свет', cost:18, kind:'heal',
+    desc:'Восстанавливает 25 HP.', eff:{ heal:25 } },
 ];
+
+// ----------------------------------------------------------------------------
+// ГИЛЬДИЯ МАГОВ: членство, ранги, улучшение и изучение заклинаний
+// ----------------------------------------------------------------------------
+const MAGE_GUILD_FEE = 2000;          // разовый членский взнос (золото)
+const MAGE_RANKS = ['Послушник', 'Эксперт', 'Мастер', 'Грандмастер'];
+function mageRankIdx(elemSum) { if (elemSum >= 120) return 3; if (elemSum >= 60) return 2; if (elemSum >= 20) return 1; return 0; }
+const SPELL_UPGRADE_MAX = 5;
+// макс. уровень улучшения зависит от ранга: Послушник 2, Эксперт 3, Мастер 4, Грандмастер 5
+function spellUpgradeCap(rankIdx) { return Math.min(SPELL_UPGRADE_MAX, rankIdx + 2); }
+function spellUpgradeCost(plus) { return { sparks: 200 * (plus + 1), gem: 2 * (plus + 1), gold: 500 * (plus + 1) }; }
+// Изучаемые в гильдии заклинания: требуемый ранг + стоимость
+const SPELL_LEARN = {
+  heal_wave:       { rank:1, sparks:300,  gold:1500 },
+  stone_skin:      { rank:1, sparks:300,  gold:1500 },
+  regen_aura:      { rank:1, sparks:350,  gold:1800 },
+  ice_lance:       { rank:1, sparks:400,  gold:2000 },
+  soul_drain:      { rank:2, sparks:600,  gold:3000 },
+  chain_lightning: { rank:2, sparks:600,  gold:3000 },
+  tempest:         { rank:2, sparks:700,  gold:3500 },
+  inferno:         { rank:2, sparks:800,  gold:4000 },
+  meteor:          { rank:3, sparks:1200, gold:6000 },
+};
 
 // ----------------------------------------------------------------------------
 // 12 МИРОВ с локациями и мобами (раздел «Локации и мобы»).
@@ -161,6 +191,30 @@ const WORLDS = [
     ]},
 ];
 
+// Требуемый уровень героя (xpLevel) для доступа к миру по индексу (тиры 1..12).
+// Это «нижняя планка»; основной гейт — последовательная зачистка миров.
+const WORLD_REQ_LEVEL = [1, 2, 4, 6, 9, 12, 15, 18, 21, 25, 30, 35];
+
+// Уникальные имена мобов мира i.
+function worldMobNames(i) {
+  const w = WORLDS[i]; if (!w) return [];
+  const s = new Set();
+  w.locations.forEach((l) => l[1].forEach((n) => s.add(n)));
+  return [...s];
+}
+// Зачищен ли мир i — побеждены ли все его мобы хотя бы по разу.
+function worldCleared(p, i) {
+  const set = new Set(p.defeatedMobs || []);
+  return worldMobNames(i).every((n) => set.has(n));
+}
+// Доступен ли мир i: по уровню И при зачищенном предыдущем мире.
+function worldUnlocked(p, i) {
+  if (i <= 0) return true;
+  const lvlOk = (p.xpLevel || 1) >= (WORLD_REQ_LEVEL[i] || 1);
+  return lvlOk && worldCleared(p, i - 1);
+}
+function allWorldsCleared(p) { return WORLDS.every((w, i) => worldCleared(p, i)); }
+
 // Боссы — по ключевым словам у мобов дают усиление и лучший лут.
 const BOSS_WORDS = ['Дракон','Дьявол','Люцифер','Лич','Кракен','Левиафан','Титан','Архангел','Шива','Минотавр','Гидра','Смерть','Антихрист','Феникс','Единорог','Сфинкс'];
 const CASTER_WORDS = ['Маг','Некромант','Чернокнижник','Элементаль','Дух','Лич','Шива','Джинн','Ведьма','Фея','Дриада','Призрак','Банши'];
@@ -243,7 +297,7 @@ const PROF_RECIPES = {
   carpentry: [['bow',2],['staff',3]],
   loom:      [['cap',1],['robe',2]],
   jewelry:   [['ring',1],['earring',2],['amulet',4]],
-  lab:       [['hp_elixir',1],['mp_elixir',1],['poison_vial',2],['str_balm',3]],
+  lab:       [['hp_elixir',1],['mp_elixir',1],['poison_vial',2],['antidote_vial',2],['str_balm',3],['silence_vial',4],['stoneskin_potion',5]],
 };
 
 // Звание мастерства по уровню профессии.
@@ -330,15 +384,22 @@ const RECIPES = [
   { id:'hell_earring', ws:'jewelry', name:'Серьги ада',      sparks:300, in:{hellSteel:1, soulGem:1},
     out:{ item:{ name:'Серьги ада',      slot:'earring', type:'бижутерия', weight:0, bonus:{ fur:6, rea:4 } } } },
 
-  // --- БУТЫЛКИ: эликсиры/зелья/мази (раздел «Бутылки») ---
+  // --- БУТЫЛКИ: эликсиры/зелья/мази (раздел «Бутылки»). conc = концентрация,
+  //     растёт от мастерства Алхимика и усиливает эффект зелья. ---
   { id:'hp_elixir',  ws:'lab', name:'Эликсир жизни', in:{herb:5},
-    out:{ item:{ name:'Эликсир жизни', slot:null, type:'эликсир', use:{ heal:40 }, stack:true } } },
+    out:{ item:{ name:'Эликсир жизни', slot:null, type:'эликсир', use:{ heal:40 }, conc:10, stack:true } } },
   { id:'mp_elixir',  ws:'lab', name:'Эликсир маны', in:{mica:5},
-    out:{ item:{ name:'Эликсир маны', slot:null, type:'эликсир', use:{ mana:40 }, stack:true } } },
+    out:{ item:{ name:'Эликсир маны', slot:null, type:'эликсир', use:{ mana:40 }, conc:10, stack:true } } },
   { id:'poison_vial',ws:'lab', name:'Зелье яда', in:{mushroom:5},
-    out:{ item:{ name:'Зелье яда', slot:null, type:'зелье', use:{ throwDmg:25 }, stack:true } } },
+    out:{ item:{ name:'Зелье яда', slot:null, type:'зелье', use:{ throwDmg:25 }, conc:10, stack:true } } },
   { id:'str_balm',   ws:'lab', name:'Мазь силы', in:{herb:3, mushroom:3},
-    out:{ item:{ name:'Мазь силы', slot:null, type:'мазь', use:{ buff:{ str:5 }, mins:30 }, stack:true } } },
+    out:{ item:{ name:'Мазь силы', slot:null, type:'мазь', use:{ buff:{ str:5 }, mins:30 }, conc:10, stack:true } } },
+  { id:'antidote_vial', ws:'lab', name:'Противоядие', in:{herb:4, mica:2},
+    out:{ item:{ name:'Противоядие', slot:null, type:'эликсир', use:{ cure:'poison' }, conc:10, stack:true } } },
+  { id:'silence_vial',  ws:'lab', name:'Зелье немоты', in:{mushroom:6, mica:3},
+    out:{ item:{ name:'Зелье немоты', slot:null, type:'зелье', use:{ silence:2 }, conc:10, stack:true } } },
+  { id:'stoneskin_potion', ws:'lab', name:'Зелье каменной кожи', in:{stone:6, herb:3},
+    out:{ item:{ name:'Зелье каменной кожи', slot:null, type:'эликсир', use:{ stoneskin:3 }, conc:12, stack:true } } },
 ];
 
 // ----------------------------------------------------------------------------
@@ -354,6 +415,91 @@ const RARITIES = {
   mythic:    { name:'Мифический',  color:'#e0503a', mult:2.60, weight:0.4 },
 };
 const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic'];
+
+// ----------------------------------------------------------------------------
+// УСИЛИТЕЛИ (камни-инкрустация в гнёзда снаряжения).
+// 9 типов (по стату) × 3 тира. Крафт за 💎 камни + 🔥 искры. Бонус к стату.
+// ----------------------------------------------------------------------------
+const ENHANCERS = {
+  str: { name:'Рубин',    icon:'🔴' },
+  agi: { name:'Изумруд',  icon:'🟢' },
+  end: { name:'Оникс',    icon:'🟤' },
+  int: { name:'Сапфир',   icon:'🔵' },
+  fai: { name:'Аметист',  icon:'🟣' },
+  fur: { name:'Альмандин',icon:'❤️' },
+  luk: { name:'Цитрин',   icon:'🟡' },
+  rea: { name:'Топаз',    icon:'🟠' },
+  ref: { name:'Алмаз',    icon:'💎' },
+};
+const GEM_TIERS = {
+  1: { rom:'I',   bonus:2, gem:2, sparks:200 },
+  2: { rom:'II',  bonus:4, gem:4, sparks:600 },
+  3: { rom:'III', bonus:7, gem:6, sparks:1500 },
+};
+const SOCKET_OPEN_COST = [300, 900, 2700]; // искры за 1-е / 2-е / 3-е гнездо
+
+// ----------------------------------------------------------------------------
+// КЛАНОВЫЕ УЛУЧШЕНИЯ (покупаются лидером за казну, бафают всех участников)
+// ----------------------------------------------------------------------------
+const CLAN_UPGRADES = {
+  artifact: { name:'Артефакт клана', icon:'⚜️', desc:'+1 ко всем статам каждому участнику за уровень' },
+  vault:    { name:'Сокровищница',   icon:'💰', desc:'+5% золота с походов за уровень' },
+  forge:    { name:'Клановая кузня',  icon:'⚒️', desc:'+1 ресурс-трофей с боя за уровень' },
+  altar:    { name:'Алтарь предков',  icon:'✨', desc:'+5% опыта с походов за уровень' },
+};
+const CLAN_UPGRADE_ORDER = ['artifact', 'vault', 'forge', 'altar'];
+const CLAN_UPGRADE_MAX = 5;
+function clanUpgradeCost(lvl) { return 1000 * (lvl + 1) * (lvl + 1); } // 1000,4000,9000,16000,25000
+
+// Дневной лимит боёв на арене с наградой (сверх — бой без золота/опыта)
+const ARENA_DAILY_LIMIT = 25;
+
+// ----------------------------------------------------------------------------
+// БОЕВЫЕ НАВЫКИ (растут от использования, как статы; дают бонусы поверх статов)
+// ----------------------------------------------------------------------------
+const SKILLS = {
+  slash:  { name:'Режущее оружие',  icon:'🗡️', kind:'weapon', desc:'+урон режущим оружием (мечи, кинжалы)' },
+  pierce: { name:'Колющее оружие',  icon:'🔱', kind:'weapon', desc:'+урон колющим (копья, пики)' },
+  chop:   { name:'Рубящее оружие',  icon:'🪓', kind:'weapon', desc:'+урон рубящим (топоры)' },
+  blunt:  { name:'Дробящее оружие', icon:'🔨', kind:'weapon', desc:'+урон дробящим (булавы, посохи)' },
+  ranged: { name:'Стрелковое оружие', icon:'🏹', kind:'weapon', desc:'+урон и атака дальним оружием' },
+  armorLight:  { name:'Лёгкая броня',  icon:'🧥', kind:'armor', desc:'+броня и защита в лёгкой броне' },
+  armorMedium: { name:'Средняя броня', icon:'🛡️', kind:'armor', desc:'+броня и защита в средней броне' },
+  armorHeavy:  { name:'Тяжёлая броня', icon:'⛓️', kind:'armor', desc:'+броня и защита в тяжёлой броне' },
+  parry:  { name:'Парирование', icon:'⚔️', kind:'def', desc:'шанс парировать удар и вернуть половину урона' },
+  taming: { name:'Приручение', icon:'🐾', kind:'special', desc:'шанс приручить ослабленного зверя; больше активных питомцев' },
+};
+const SKILL_ORDER = ['slash', 'pierce', 'chop', 'blunt', 'ranged', 'armorLight', 'armorMedium', 'armorHeavy', 'parry', 'taming'];
+const PETS_MAX = 10; // всего питомцев в коллекции
+const ARMOR_SKILL = { light: 'armorLight', medium: 'armorMedium', heavy: 'armorHeavy' };
+
+// Категория навыка для оружия (по дистанции и названию). Кулаки → null.
+function weaponSkillFor(it) {
+  if (!it) return null;
+  if (it.dist === 'дальняя') return 'ranged';
+  const n = (it.name || '').toLowerCase();
+  if (/лук|арбалет|диск|дротик|стрел|праща/.test(n)) return 'ranged';
+  if (/топор|секира/.test(n)) return 'chop';
+  if (/булав|молот|посох|дубин|кистень|жезл/.test(n)) return 'blunt';
+  if (/копь|пик|трезуб|вилы|острог/.test(n)) return 'pierce';
+  return 'slash'; // меч, кинжал, сабля, клинок и прочее
+}
+// Класс брони предмета (light/medium/heavy) по слоту и материалу в названии.
+function armorClassOf(it) {
+  if (!it || !['head', 'body', 'shield'].includes(it.slot)) return null;
+  const n = (it.name || '').toLowerCase();
+  if (/латн|стальн|сталь|плит|чешуй|дракон|мифрил|адск|железн/.test(n)) return 'heavy';
+  if (/кож/.test(n)) return 'medium';
+  if (/ткан|роба|мантия|холст|матерч|капюшон|тряп/.test(n)) return 'light';
+  return 'medium';
+}
+// Максимум гнёзд для предмета (по рарности; без рарности — 1).
+function maxSockets(it) {
+  const i = it && it.rarity ? RARITY_ORDER.indexOf(it.rarity) : 0;
+  if (i >= RARITY_ORDER.indexOf('legendary')) return 3;
+  if (i >= RARITY_ORDER.indexOf('rare')) return 2;
+  return 1;
+}
 
 // ----------------------------------------------------------------------------
 // КЛАССОВЫЕ КОМПЛЕКТЫ (сеты). Каждый сет — предметы одного класса по слотам.
@@ -497,6 +643,7 @@ const ACHIEVEMENTS = [
   { id:'archivist', icon:'🗂️', name:'Архивариус', desc:'Открой в Кодексе все 7 сетов.', reward:{ souls:2 }, check:(p) => Object.keys(GEAR_SETS).every((id) => p.codex && p.codex[id]) },
   { id:'legend', icon:'🟠', name:'Прикосновение легенды', desc:'Найди предмет легендарной рарности.', reward:{ souls:1 }, check:(p) => _acMaxRarity(p) >= RARITY_ORDER.indexOf('legendary') },
   { id:'mythic', icon:'🔴', name:'Миф во плоти', desc:'Найди предмет мифической рарности.', reward:{ souls:2 }, check:(p) => _acMaxRarity(p) >= RARITY_ORDER.indexOf('mythic') },
+  { id:'conqueror', icon:'🏆', name:'Покоритель миров', desc:'Победи всех мобов во всех 12 мирах.', reward:{ souls:5 }, check:(p) => allWorldsCleared(p) },
 ];
 
 // ----------------------------------------------------------------------------
@@ -527,6 +674,22 @@ function makeSetItem(setId, slot, rarityKey) {
   return it;
 }
 
+// --- Премиум-лавка (Фаза 2): сетовые предметы за Души ---
+// Цена части по рарности (привязка ~$0.10/душа → $3/$5/$7/$10).
+const PREMIUM_PIECE_PRICE = { rare: 30, epic: 50, legendary: 70, mythic: 100 };
+// Премиум-аккаунт (Фаза 3): цена за 30 дней.
+const PREMIUM_STARS = 300;
+const PREMIUM_SOULS = 55;
+const PREMIUM_DAYS = 30;
+const PREMIUM_RARITIES = ['rare', 'epic', 'legendary', 'mythic'];
+// Цена за весь сет = цена части × число частей × 0.7 (скидка за комплект), округление до 5.
+function premiumSetPrice(setId, rarity) {
+  const set = GEAR_SETS[setId];
+  if (!set || !PREMIUM_PIECE_PRICE[rarity]) return 0;
+  const n = Object.keys(set.pieces).length;
+  return Math.round((PREMIUM_PIECE_PRICE[rarity] * n * 0.7) / 5) * 5;
+}
+
 // ----------------------------------------------------------------------------
 // ЗДАНИЯ ВАВИЛОНСКОЙ БАШНИ (раздел «Техзадание» → Вавилонская башня)
 // ----------------------------------------------------------------------------
@@ -543,6 +706,8 @@ const TOWER_BUILDINGS = [
   { id:'tavern',    name:'Таверна',       icon:'🍺', desc:'Азартные игры на золото: кости, напёрстки и лотерея (раздел GDD «Таверна»).' },
   { id:'bank',      name:'Банк',          icon:'🏛️', desc:'Обмен Душ на Золото и Искры (монетизация GDD).' },
   { id:'clans',     name:'Кланы',         icon:'🛡️', desc:'Объедините полубогов в клан: общая казна и пассивный бонус всем участникам (раздел GDD «кланы»).' },
+  { id:'chat',      name:'Чат мира',      icon:'💬', desc:'Общий живой чат всех полубогов.' },
+  { id:'mageguild', name:'Гильдия магов', icon:'🔮', desc:'Членство, ранги, улучшение и изучение заклинаний (раздел GDD «Гильдия магов»).' },
   { id:'council',   name:'Совет старейшин',icon:'📜', desc:'Журнал заданий — большая часть квестов берётся здесь.' },
 ];
 
